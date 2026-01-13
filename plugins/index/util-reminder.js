@@ -8,38 +8,16 @@ function getReminders() {
   if (!global.db.data.reminders) {
     global.db.data.reminders = {}
   }
-  return global.db.data.reminders
-}
-
-// Check and fire pending reminders on startup
-async function checkPendingReminders(conn) {
-  const reminders = getReminders()
+  // Auto-cleanup expired/fired reminders
   const now = Date.now()
-  
-  for (const [sender, userReminders] of Object.entries(reminders)) {
+  for (const [sender, userReminders] of Object.entries(global.db.data.reminders)) {
     if (!Array.isArray(userReminders)) continue
-    
-    for (const reminder of userReminders) {
-      if (reminder.endTime <= now && !reminder.fired) {
-        // Fire overdue reminder
-        try {
-          await conn.sendMessage(reminder.chat, {
-            text: `⏰ *REMINDER* (delayed)\n\n@${sender.split('@')[0]}, you asked me to remind you:\n\n📝 ${reminder.message}`,
-            mentions: [sender]
-          })
-          reminder.fired = true
-        } catch (e) {
-          console.error('Reminder error:', e)
-        }
-      }
-    }
-    
-    // Clean up fired reminders
-    reminders[sender] = userReminders.filter(r => !r.fired && r.endTime > now)
-    if (reminders[sender].length === 0) {
-      delete reminders[sender]
+    global.db.data.reminders[sender] = userReminders.filter(r => !r.fired && r.endTime > now)
+    if (global.db.data.reminders[sender].length === 0) {
+      delete global.db.data.reminders[sender]
     }
   }
+  return global.db.data.reminders
 }
 
 let handler = async (m, { conn, text, args, usedPrefix, command }) => {
