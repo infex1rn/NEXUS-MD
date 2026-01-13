@@ -1,0 +1,9 @@
+node_modules/
+auth_info/
+session/
+.env
+tmp/*
+!tmp/.gitkeep
+*.log
+.DS_Store
+package-lock.json

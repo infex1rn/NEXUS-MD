@@ -1,0 +1,9 @@
+node_modules
+auth_info
+.env
+*.log
+.git
+.gitignore
+.DS_Store
+tmp/*
+firebase-service-account.json
