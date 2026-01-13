@@ -1,0 +1,33 @@
+# Render Blueprint for NEXUS-MD WhatsApp Bot
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: nexus-md-bot
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: PHONE_NUMBER
+        sync: false
+      - key: OWNERS
+        sync: false
+      - key: BOTNAME
+        value: NEXUS-MD
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: FIREBASE_DATABASE_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

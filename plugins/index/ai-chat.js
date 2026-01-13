@@ -1,18 +1,30 @@
 /**
  * Tools Command: GPT / AI Chat
- * Chat with AI
+ * Chat with AI (persistent conversation history via database)
  */
 import fetch from 'node-fetch'
 
-const conversationHistory = {}
 const MAX_HISTORY = 5
+
+// Helper to get conversation history from database
+function getConversationHistory(userId) {
+  if (!global.db.data.aiConversations) {
+    global.db.data.aiConversations = {}
+  }
+  if (!global.db.data.aiConversations[userId]) {
+    global.db.data.aiConversations[userId] = []
+  }
+  return global.db.data.aiConversations[userId]
+}
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
   const userId = m.sender
   
   // Reset command
   if (command === 'resetai') {
-    delete conversationHistory[userId]
+    if (global.db.data.aiConversations) {
+      delete global.db.data.aiConversations[userId]
+    }
     return m.reply('✅ *Conversation history cleared!* Starting fresh.')
   }
   
@@ -24,10 +36,8 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     await m.react('🧠')
     await conn.sendPresenceUpdate('composing', m.chat)
     
-    // Initialize history if not exists
-    if (!conversationHistory[userId]) {
-      conversationHistory[userId] = []
-    }
+    // Get history from database
+    const conversationHistory = getConversationHistory(userId)
     
     // Build messages array with history
     const messages = [
@@ -35,7 +45,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         role: 'system',
         content: 'You are NEXUS-AI, a friendly and helpful WhatsApp assistant. You provide concise, accurate answers while being conversational. Keep responses relatively brief but complete.'
       },
-      ...conversationHistory[userId].flatMap(h => [
+      ...conversationHistory.flatMap(h => [
         { role: 'user', content: h.user },
         { role: 'assistant', content: h.assistant }
       ]),
@@ -49,15 +59,16 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     await m.reply(demoResponse)
     await m.react('✅')
     
-    // Store in history (for when API is configured)
-    conversationHistory[userId].push({
+    // Store in history (in database)
+    conversationHistory.push({
       user: text,
-      assistant: 'Demo response'
+      assistant: 'Demo response',
+      timestamp: Date.now()
     })
     
     // Limit history
-    if (conversationHistory[userId].length > MAX_HISTORY) {
-      conversationHistory[userId].shift()
+    while (conversationHistory.length > MAX_HISTORY) {
+      conversationHistory.shift()
     }
     
   } catch (e) {

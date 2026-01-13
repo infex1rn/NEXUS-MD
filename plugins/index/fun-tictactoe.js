@@ -1,12 +1,20 @@
 /**
  * Fun Command: TicTacToe
- * Play tic-tac-toe game
+ * Play tic-tac-toe game (persistent via database)
  */
-const games = {}
+
+// Helper to get games from database
+function getGames() {
+  if (!global.db.data.tictactoeGames) {
+    global.db.data.tictactoeGames = {}
+  }
+  return global.db.data.tictactoeGames
+}
 
 let handler = async (m, { conn, text, command, usedPrefix }) => {
   const chatId = m.chat
   const senderId = m.sender
+  const games = getGames()
   
   if (command === 'tictactoe' || command === 'ttt') {
     if (!text) {
@@ -30,7 +38,8 @@ let handler = async (m, { conn, text, command, usedPrefix }) => {
       player1: senderId,
       player2: opponent,
       currentTurn: senderId,
-      symbols: { [senderId]: 'X', [opponent === 'bot' ? 'bot' : opponent]: 'O' }
+      symbols: { [senderId]: 'X', [opponent === 'bot' ? 'bot' : opponent]: 'O' },
+      createdAt: Date.now()
     }
     
     const boardDisplay = displayBoard(games[chatId].board)
@@ -52,6 +61,8 @@ let handler = async (m, { conn, text, command, usedPrefix }) => {
 
 handler.before = async (m, { conn }) => {
   const chatId = m.chat
+  const games = getGames()
+  
   if (!games[chatId]) return false
   
   const game = games[chatId]

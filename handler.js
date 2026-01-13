@@ -1,12 +1,10 @@
 import { smsg } from './lib/simple.js'
-import { format } from 'util'
 import { fileURLToPath } from 'url'
 import path, { join } from 'path'
 import { unwatchFile, watchFile } from 'fs'
 import chalk from 'chalk'
 
 const isNumber = x => typeof x === 'number' && !isNaN(x)
-const delay = ms => isNumber(ms) && new Promise(resolve => setTimeout(resolve, ms))
 
 /**
  * Handle messages upsert
@@ -442,7 +440,7 @@ export async function groupsUpdate(groupsUpdate) {
  */
 export async function deleteUpdate(message) {
   try {
-    const { fromMe, id } = message
+    const { fromMe } = message
     if (fromMe) return
     
     const chat = global.db.data.chats[message.remoteJid] || {}

@@ -1,13 +1,26 @@
 /**
  * Casino Command: Blackjack
- * Play blackjack against the dealer
+ * Play blackjack against the dealer (persistent via database)
  */
 import { initUserEconomy, formatMoney, addMoney, removeMoney, addExp } from '../../lib/economy.js'
 
 const CARDS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
 const SUITS = ['♠️', '♥️', '♦️', '♣️']
 
-const activeGames = new Map()
+// Helper to get active games from database
+function getActiveGames() {
+  if (!global.db.data.blackjackGames) {
+    global.db.data.blackjackGames = {}
+  }
+  // Clean up expired games (older than 5 minutes)
+  const now = Date.now()
+  for (const [key, game] of Object.entries(global.db.data.blackjackGames)) {
+    if (now - game.startedAt > 5 * 60 * 1000) {
+      delete global.db.data.blackjackGames[key]
+    }
+  }
+  return global.db.data.blackjackGames
+}
 
 function createDeck() {
   const deck = []
@@ -61,9 +74,10 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
   const user = global.db.data.users[m.sender]
   const economy = initUserEconomy(user)
   const gameKey = `${m.chat}-${m.sender}`
+  const activeGames = getActiveGames()
   
   // Check for active game
-  const activeGame = activeGames.get(gameKey)
+  const activeGame = activeGames[gameKey]
   
   // Handle hit/stand for active game
   if (activeGame) {
@@ -77,7 +91,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
       
       if (playerValue > 21) {
         // Bust
-        activeGames.delete(gameKey)
+        delete activeGames[gameKey]
         
         return m.reply(`
 ╭━━━━━━━━━━━━━━━━━━━━━╮
@@ -149,7 +163,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
       }
       
       addExp(user, Math.floor(activeGame.bet / 50))
-      activeGames.delete(gameKey)
+      delete activeGames[gameKey]
       
       return m.reply(`
 ╭━━━━━━━━━━━━━━━━━━━━━╮
@@ -228,21 +242,14 @@ ${result}
 `.trim())
   }
   
-  // Store game state
-  activeGames.set(gameKey, {
+  // Store game state in database
+  activeGames[gameKey] = {
     deck,
     playerHand,
     dealerHand,
     bet,
     startedAt: Date.now()
-  })
-  
-  // Auto-delete game after 5 minutes
-  setTimeout(() => {
-    if (activeGames.has(gameKey)) {
-      activeGames.delete(gameKey)
-    }
-  }, 5 * 60 * 1000)
+  }
   
   await m.reply(`
 ╭━━━━━━━━━━━━━━━━━━━━━╮
