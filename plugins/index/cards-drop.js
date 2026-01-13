@@ -1,6 +1,8 @@
 /**
  * Card Command: Drop
  * Check drop status and manually trigger drops (owner only)
+ * NOTE: Hourly drops are FREE - users just claim with .claim <serial>
+ * Gacha/draw with .gacha costs coins
  */
 import { 
   createDrop, 
@@ -41,12 +43,12 @@ let handler = async (m, { conn, args, isOwner, usedPrefix }) => {
   
   let replyText = `
 ╭━━━━━━━━━━━━━━━━━━━━━╮
-┃  🎴 *CARD DROPS*
+┃  🎴 *FREE CARD DROPS*
 ╰━━━━━━━━━━━━━━━━━━━━━╯
 
 📦 *No Active Drop*
 
-Cards drop automatically every hour!
+Anime cards drop automatically every hour - *FOR FREE!*
 `
 
   if (nextDropIn > 0) {
@@ -57,44 +59,43 @@ Cards drop automatically every hour!
   
   replyText += `
 
-*How it works:*
-├ 🎴 3 cards drop every hour
+*How FREE Drops Work:*
+├ 🎴 3 anime cards drop every hour
+├ 🆓 Completely FREE to claim!
 ├ 🏃 First to claim wins!
 ├ ⏰ Cards expire in 30 minutes
 └ 💬 Stay active to catch drops!
 
 *Commands:*
-├ ${usedPrefix}claim <serial> - Claim a card
+├ ${usedPrefix}claim <serial> - Claim a FREE card
 ├ ${usedPrefix}cards - View your collection
-└ ${usedPrefix}cardinfo <serial> - Card details
+├ ${usedPrefix}cardinfo <serial> - Card details
+└ ${usedPrefix}gacha - Pull cards with coins
+
+_Drops are FREE! Gacha costs coins._
 `
 
   await m.reply(replyText.trim())
 }
 
-// Auto-drop on group activity
+// Auto-drop on group activity (FREE drops every hour)
 handler.before = async (m, { conn, isGroup }) => {
   if (!isGroup || m.isBaileys) return false
   
-  // Only process in groups with activity
   const chatId = m.chat
   
-  // Check if eligible for drop
   if (!canDrop(chatId)) return false
-  
-  // Check if there's already an active drop
   if (getActiveDrop(chatId)) return false
   
-  // Random chance to trigger drop (5% on each message when eligible)
+  // 5% chance to trigger drop when eligible
   if (Math.random() > 0.05) return false
   
-  // Create drop
   const drop = createDrop(chatId)
   recordDrop(chatId)
   
-  // Announce drop
+  // Announce FREE drop
   await conn.sendMessage(chatId, {
-    text: formatDropMessage(drop)
+    text: `🎉 *FREE ANIME CARD DROP!* 🎉\n\n` + formatDropMessage(drop) + `\n\n_These cards are FREE! Just claim with .claim <serial>_`
   })
   
   return false
@@ -102,7 +103,7 @@ handler.before = async (m, { conn, isGroup }) => {
 
 handler.help = ['drop', 'drop force']
 handler.tags = ['cards']
-handler.command = ['drop', 'carddrop', 'drops']
-handler.desc = 'Check card drop status'
+handler.command = ['drop', 'carddrop', 'drops', 'freedrop']
+handler.desc = 'Check FREE card drop status'
 
 export default handler

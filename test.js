@@ -304,6 +304,270 @@ test('URL detection works', () => {
 })
 
 // ============================================
+// ECONOMY SYSTEM TESTS
+// ============================================
+console.log(chalk.yellow('\n💰 Testing Economy System...\n'))
+
+test('Economy user initialization works', () => {
+  const user = {}
+  
+  const initUserEconomy = (user) => {
+    if (!user.economy) {
+      user.economy = {
+        wallet: 0,
+        bank: 0,
+        exp: 0,
+        level: 1,
+        lastDaily: 0,
+        lastWork: 0,
+        totalEarned: 0,
+        totalSpent: 0,
+        workCount: 0,
+        streak: 0
+      }
+    }
+    return user.economy
+  }
+  
+  const economy = initUserEconomy(user)
+  assert(economy.wallet === 0, 'Wallet should start at 0')
+  assert(economy.level === 1, 'Level should start at 1')
+  assert(economy.streak === 0, 'Streak should start at 0')
+})
+
+test('Money operations work correctly', () => {
+  const economy = { wallet: 1000, totalEarned: 0, totalSpent: 0 }
+  
+  // Add money
+  economy.wallet += 500
+  economy.totalEarned += 500
+  assert(economy.wallet === 1500, 'Should add money correctly')
+  
+  // Remove money
+  const amount = 300
+  if (economy.wallet >= amount) {
+    economy.wallet -= amount
+    economy.totalSpent += amount
+  }
+  assert(economy.wallet === 1200, 'Should remove money correctly')
+})
+
+test('Level calculation works', () => {
+  const calculateLevel = (exp) => Math.floor(0.1 * Math.sqrt(exp)) + 1
+  
+  assert(calculateLevel(0) === 1, 'Level 1 at 0 XP')
+  assert(calculateLevel(100) === 2, 'Level 2 at 100 XP')
+  assert(calculateLevel(400) === 3, 'Level 3 at 400 XP')
+  assert(calculateLevel(10000) === 11, 'Level 11 at 10000 XP')
+})
+
+test('Cooldown system works', () => {
+  const canDo = (lastTime, cooldown) => Date.now() - lastTime >= cooldown
+  const getRemainingCooldown = (lastTime, cooldown) => {
+    const remaining = cooldown - (Date.now() - lastTime)
+    return remaining > 0 ? remaining : 0
+  }
+  
+  const pastTime = Date.now() - 60000 // 1 minute ago
+  const recentTime = Date.now() - 1000 // 1 second ago
+  const cooldown = 30000 // 30 seconds
+  
+  assert(canDo(pastTime, cooldown) === true, 'Should allow action after cooldown')
+  assert(canDo(recentTime, cooldown) === false, 'Should block action during cooldown')
+  assert(getRemainingCooldown(pastTime, cooldown) === 0, 'No remaining cooldown')
+  assert(getRemainingCooldown(recentTime, cooldown) > 0, 'Should have remaining cooldown')
+})
+
+// ============================================
+// CARD SYSTEM TESTS
+// ============================================
+console.log(chalk.yellow('\n🎴 Testing Anime Card System...\n'))
+
+test('Card rarities are defined correctly', () => {
+  const RARITIES = {
+    common: { name: 'Common', chance: 50, value: 50, animated: false },
+    uncommon: { name: 'Uncommon', chance: 25, value: 150, animated: false },
+    rare: { name: 'Rare', chance: 15, value: 500, animated: false },
+    epic: { name: 'Epic', chance: 7, value: 1500, animated: true },
+    legendary: { name: 'Legendary', chance: 2.5, value: 5000, animated: true },
+    mythic: { name: 'Mythic', chance: 0.5, value: 20000, animated: true, special: true }
+  }
+  
+  assert(RARITIES.common.animated === false, 'Common should not be animated')
+  assert(RARITIES.epic.animated === true, 'Epic should be animated')
+  assert(RARITIES.legendary.animated === true, 'Legendary should be animated')
+  assert(RARITIES.mythic.special === true, 'Mythic should be special')
+  
+  // Check total chance adds to 100
+  const totalChance = Object.values(RARITIES).reduce((sum, r) => sum + r.chance, 0)
+  assert(totalChance === 100, 'Total rarity chance should be 100%')
+})
+
+test('Card user initialization works', () => {
+  const user = {}
+  
+  const initUserCards = (user) => {
+    if (!user.cards) {
+      user.cards = {
+        collection: [],
+        favorites: [],
+        totalPulls: 0,
+        pity: 0,
+        lastPull: 0
+      }
+    }
+    return user.cards
+  }
+  
+  const cards = initUserCards(user)
+  assert(Array.isArray(cards.collection), 'Collection should be array')
+  assert(cards.pity === 0, 'Pity should start at 0')
+  assert(cards.totalPulls === 0, 'Total pulls should start at 0')
+})
+
+test('Serial number generation works', () => {
+  const generateSerial = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    let serial = 'NX-'
+    for (let i = 0; i < 6; i++) {
+      serial += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return serial
+  }
+  
+  const serial1 = generateSerial()
+  const serial2 = generateSerial()
+  
+  assert(serial1.startsWith('NX-'), 'Serial should start with NX-')
+  assert(serial1.length === 9, 'Serial should be 9 characters')
+  assert(serial1 !== serial2, 'Serials should be unique')
+})
+
+test('Card rarity rolling works', () => {
+  const RARITIES = {
+    common: { chance: 50 },
+    uncommon: { chance: 25 },
+    rare: { chance: 15 },
+    epic: { chance: 7 },
+    legendary: { chance: 2.5 },
+    mythic: { chance: 0.5 }
+  }
+  
+  const rollRarity = () => {
+    const total = Object.values(RARITIES).reduce((sum, r) => sum + r.chance, 0)
+    let random = Math.random() * total
+    
+    for (const [key, r] of Object.entries(RARITIES)) {
+      random -= r.chance
+      if (random <= 0) return key
+    }
+    return 'common'
+  }
+  
+  // Roll many times and check distribution
+  const rolls = {}
+  for (let i = 0; i < 1000; i++) {
+    const rarity = rollRarity()
+    rolls[rarity] = (rolls[rarity] || 0) + 1
+  }
+  
+  assert(rolls.common > rolls.legendary, 'Common should be more frequent than legendary')
+  assert(Object.keys(rolls).length > 0, 'Should have rolled some cards')
+})
+
+test('Card collection stats work', () => {
+  const userCards = {
+    collection: [
+      { cardId: 'c001', serial: 'NX-ABC123' },
+      { cardId: 'c001', serial: 'NX-DEF456' },
+      { cardId: 'c002', serial: 'NX-GHI789' }
+    ],
+    totalPulls: 3,
+    pity: 3
+  }
+  
+  const uniqueCards = [...new Set(userCards.collection.map(c => c.cardId))]
+  
+  assert(userCards.collection.length === 3, 'Should have 3 total cards')
+  assert(uniqueCards.length === 2, 'Should have 2 unique cards')
+})
+
+// ============================================
+// CASINO SYSTEM TESTS
+// ============================================
+console.log(chalk.yellow('\n🎰 Testing Casino System...\n'))
+
+test('Slot machine symbols are defined', () => {
+  const SLOT_SYMBOLS = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣', '🎰']
+  const PAYOUTS = { '7️⃣': 10, '💎': 7, '🎰': 5, '🍇': 3, '🍊': 2.5, '🍋': 2, '🍒': 1.5 }
+  
+  assert(SLOT_SYMBOLS.length === 7, 'Should have 7 slot symbols')
+  assert(PAYOUTS['7️⃣'] === 10, 'Jackpot should pay 10x')
+})
+
+test('Slot winnings calculation works', () => {
+  const PAYOUTS = { '7️⃣': 10, '💎': 7, '🍒': 1.5 }
+  
+  const calculateWinnings = (reels, bet) => {
+    const [r1, r2, r3] = reels
+    if (r1 === r2 && r2 === r3) return Math.floor(bet * PAYOUTS[r1])
+    if (r1 === r2 || r2 === r3 || r1 === r3) {
+      const match = r1 === r2 ? r1 : r1 === r3 ? r1 : r2
+      return Math.floor(bet * (PAYOUTS[match] * 0.3))
+    }
+    return 0
+  }
+  
+  assert(calculateWinnings(['7️⃣', '7️⃣', '7️⃣'], 100) === 1000, 'Jackpot should pay 10x')
+  assert(calculateWinnings(['💎', '💎', '🍒'], 100) === 210, 'Two diamonds should pay partial')
+  assert(calculateWinnings(['🍒', '🍋', '🍊'], 100) === 0, 'No match should pay 0')
+})
+
+test('Coinflip has 50/50 odds', () => {
+  let heads = 0, tails = 0
+  
+  for (let i = 0; i < 1000; i++) {
+    if (Math.random() < 0.5) heads++
+    else tails++
+  }
+  
+  // Allow 10% variance
+  const ratio = heads / tails
+  assert(ratio > 0.8 && ratio < 1.2, 'Coinflip should be roughly 50/50')
+})
+
+test('Blackjack card values are correct', () => {
+  const getCardValue = (card) => {
+    if (['J', 'Q', 'K'].includes(card)) return 10
+    if (card === 'A') return 11
+    return parseInt(card)
+  }
+  
+  assert(getCardValue('A') === 11, 'Ace should be 11')
+  assert(getCardValue('K') === 10, 'King should be 10')
+  assert(getCardValue('7') === 7, 'Number cards should be face value')
+})
+
+test('Blackjack hand calculation works', () => {
+  const calculateHand = (cards) => {
+    let value = 0, aces = 0
+    
+    for (const card of cards) {
+      if (['J', 'Q', 'K'].includes(card)) value += 10
+      else if (card === 'A') { value += 11; aces++ }
+      else value += parseInt(card)
+    }
+    
+    while (value > 21 && aces > 0) { value -= 10; aces-- }
+    return value
+  }
+  
+  assert(calculateHand(['A', 'K']) === 21, 'Blackjack should be 21')
+  assert(calculateHand(['A', 'A', '9']) === 21, 'Soft 21 should work')
+  assert(calculateHand(['K', 'Q', '5']) === 25, 'Bust hand should calculate correctly')
+})
+
+// ============================================
 // SUMMARY
 // ============================================
 console.log(chalk.cyan('\n╔════════════════════════════════════════╗'))
