@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS-MD Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root { --primary: #8b5cf6; --dark: #1e1b4b; }
+    body { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%); min-height: 100vh; }
+    .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }
+    .glow { box-shadow: 0 0 20px rgba(139, 92, 246, 0.5); }
+    .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 40px rgba(139, 92, 246, 0.3); }
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    .float { animation: float 3s ease-in-out infinite; }
+    .gradient-text { background: linear-gradient(90deg, #8b5cf6, #ec4899, #8b5cf6); background-size: 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: gradient 3s linear infinite; }
+    @keyframes gradient { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+  </style>
+</head>
+<body class="text-white">
+  <!-- Navigation -->
+  <nav class="glass fixed w-full z-50 px-6 py-4">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center glow">
+          <i class="fas fa-robot text-xl"></i>
+        </div>
+        <span class="text-2xl font-bold gradient-text">NEXUS-MD</span>
+      </div>
+      <div class="hidden md:flex space-x-8">
+        <a href="#features" class="hover:text-purple-400 transition">Features</a>
+        <a href="#commands" class="hover:text-purple-400 transition">Commands</a>
+        <a href="#pair" class="hover:text-purple-400 transition">Pair Device</a>
+        <a href="#deploy" class="hover:text-purple-400 transition">Deploy</a>
+      </div>
+      <button class="md:hidden text-2xl" onclick="toggleMenu()">
+        <i class="fas fa-bars"></i>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Mobile Menu -->
+  <div id="mobileMenu" class="hidden fixed inset-0 z-40 bg-black/90 pt-20">
+    <div class="flex flex-col items-center space-y-8 text-2xl">
+      <a href="#features" onclick="toggleMenu()" class="hover:text-purple-400">Features</a>
+      <a href="#commands" onclick="toggleMenu()" class="hover:text-purple-400">Commands</a>
+      <a href="#pair" onclick="toggleMenu()" class="hover:text-purple-400">Pair Device</a>
+      <a href="#deploy" onclick="toggleMenu()" class="hover:text-purple-400">Deploy</a>
+    </div>
+  </div>
+
+  <!-- Hero Section -->
+  <section class="pt-32 pb-20 px-6">
+    <div class="container mx-auto text-center">
+      <div class="float inline-block mb-8">
+        <div class="w-32 h-32 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center glow">
+          <i class="fab fa-whatsapp text-6xl"></i>
+        </div>
+      </div>
+      <h1 class="text-5xl md:text-7xl font-bold mb-6">
+        <span class="gradient-text">NEXUS-MD</span>
+      </h1>
+      <p class="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+        A powerful multi-device WhatsApp bot with economy system, casino games, anime card collection, and 100+ commands.
+      </p>
+      <div class="flex flex-wrap justify-center gap-4">
+        <a href="#pair" class="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full font-bold hover:opacity-90 transition glow">
+          <i class="fas fa-link mr-2"></i>Pair Device
+        </a>
+        <a href="https://github.com/infex1rn/NEXUS-MD" target="_blank" class="px-8 py-4 glass rounded-full font-bold hover:bg-white/20 transition">
+          <i class="fab fa-github mr-2"></i>GitHub
+        </a>
+      </div>
+      
+      <!-- Stats -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16 max-w-3xl mx-auto">
+        <div class="glass rounded-xl p-4">
+          <div class="text-3xl font-bold text-purple-400">100+</div>
+          <div class="text-gray-400 text-sm">Commands</div>
+        </div>
+        <div class="glass rounded-xl p-4">
+          <div class="text-3xl font-bold text-pink-400">1000+</div>
+          <div class="text-gray-400 text-sm">Anime Cards</div>
+        </div>
+        <div class="glass rounded-xl p-4">
+          <div class="text-3xl font-bold text-green-400">6</div>
+          <div class="text-gray-400 text-sm">Casino Games</div>
+        </div>
+        <div class="glass rounded-xl p-4">
+          <div class="text-3xl font-bold text-blue-400">∞</div>
+          <div class="text-gray-400 text-sm">Fun</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="py-20 px-6">
+    <div class="container mx-auto">
+      <h2 class="text-4xl font-bold text-center mb-4">
+        <i class="fas fa-star text-yellow-400 mr-3"></i>Features
+      </h2>
+      <p class="text-gray-400 text-center mb-12 max-w-xl mx-auto">Everything you need for the ultimate WhatsApp bot experience</p>
+      
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Economy -->
+        <div class="glass rounded-2xl p-6 card-hover transition-all duration-300">
+          <div class="w-16 h-16 bg-green-500/20 rounded-xl flex items-center justify-center mb-4">
+            <i class="fas fa-coins text-3xl text-green-400"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-2">Economy System</h3>
+          <p class="text-gray-400 mb-4">Complete virtual economy with wallet, bank, daily rewards, work activities, and rich leaderboards.</p>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 bg-green-500/20 rounded text-xs text-green-400">balance</span>
+            <span class="px-2 py-1 bg-green-500/20 rounded text-xs text-green-400">daily</span>
+            <span class="px-2 py-1 bg-green-500/20 rounded text-xs text-green-400">work</span>
+            <span class="px-2 py-1 bg-green-500/20 rounded text-xs text-green-400">pay</span>
+          </div>
+        </div>
+
+        <!-- Casino -->
+        <div class="glass rounded-2xl p-6 card-hover transition-all duration-300">
+          <div class="w-16 h-16 bg-red-500/20 rounded-xl flex items-center justify-center mb-4">
+            <i class="fas fa-dice text-3xl text-red-400"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-2">Casino Games</h3>
+          <p class="text-gray-400 mb-4">Thrilling gambling games including slots, blackjack, roulette, coinflip, dice, and crash betting.</p>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 bg-red-500/20 rounded text-xs text-red-400">slots</span>
+            <span class="px-2 py-1 bg-red-500/20 rounded text-xs text-red-400">blackjack</span>
+            <span class="px-2 py-1 bg-red-500/20 rounded text-xs text-red-400">crash</span>
+            <span class="px-2 py-1 bg-red-500/20 rounded text-xs text-red-400">roulette</span>
+          </div>
+        </div>
+
+        <!-- Cards -->
+        <div class="glass rounded-2xl p-6 card-hover transition-all duration-300">
+          <div class="w-16 h-16 bg-pink-500/20 rounded-xl flex items-center justify-center mb-4">
+            <i class="fas fa-id-card text-3xl text-pink-400"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-2">Anime Card Collection</h3>
+          <p class="text-gray-400 mb-4">Collect 1000+ anime characters with hourly free drops, trading system, gacha pulls, and rarity tiers.</p>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 bg-pink-500/20 rounded text-xs text-pink-400">claim</span>
+            <span class="px-2 py-1 bg-pink-500/20 rounded text-xs text-pink-400">gacha</span>
+            <span class="px-2 py-1 bg-pink-500/20 rounded text-xs text-pink-400">send</span>
+            <span class="px-2 py-1 bg-pink-500/20 rounded text-xs text-pink-400">collection</span>
+          </div>
+        </div>
+
+        <!-- AI -->
+        <div class="glass rounded-2xl p-6 card-hover transition-all duration-300">
+          <div class="w-16 h-16 bg-blue-500/20 rounded-xl flex items-center justify-center mb-4">
+            <i class="fas fa-brain text-3xl text-blue-400"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-2">AI Powered</h3>
+          <p class="text-gray-400 mb-4">ChatGPT integration for intelligent conversations and DALL-E for AI image generation.</p>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 bg-blue-500/20 rounded text-xs text-blue-400">gpt</span>
+            <span class="px-2 py-1 bg-blue-500/20 rounded text-xs text-blue-400">dalle</span>
+            <span class="px-2 py-1 bg-blue-500/20 rounded text-xs text-blue-400">translate</span>
+          </div>
+        </div>
+
+        <!-- Admin -->
+        <div class="glass rounded-2xl p-6 card-hover transition-all duration-300">
+          <div class="w-16 h-16 bg-yellow-500/20 rounded-xl flex items-center justify-center mb-4">
+            <i class="fas fa-users-cog text-3xl text-yellow-400"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-2">Admin Tools</h3>
+          <p class="text-gray-400 mb-4">Complete group management with antilink, kick, ban, promote, demote, warnings, and welcome messages.</p>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 bg-yellow-500/20 rounded text-xs text-yellow-400">kick</span>
+            <span class="px-2 py-1 bg-yellow-500/20 rounded text-xs text-yellow-400">antilink</span>
+            <span class="px-2 py-1 bg-yellow-500/20 rounded text-xs text-yellow-400">tagall</span>
+            <span class="px-2 py-1 bg-yellow-500/20 rounded text-xs text-yellow-400">warn</span>
+          </div>
+        </div>
+
+        <!-- Media -->
+        <div class="glass rounded-2xl p-6 card-hover transition-all duration-300">
+          <div class="w-16 h-16 bg-purple-500/20 rounded-xl flex items-center justify-center mb-4">
+            <i class="fas fa-download text-3xl text-purple-400"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-2">Media Download</h3>
+          <p class="text-gray-400 mb-4">Download from YouTube, TikTok, Instagram, Facebook, and create stickers from any image.</p>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 bg-purple-500/20 rounded text-xs text-purple-400">play</span>
+            <span class="px-2 py-1 bg-purple-500/20 rounded text-xs text-purple-400">tiktok</span>
+            <span class="px-2 py-1 bg-purple-500/20 rounded text-xs text-purple-400">sticker</span>
+            <span class="px-2 py-1 bg-purple-500/20 rounded text-xs text-purple-400">video</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Card Rarities Section -->
+  <section class="py-20 px-6 bg-black/20">
+    <div class="container mx-auto">
+      <h2 class="text-4xl font-bold text-center mb-4">
+        <i class="fas fa-gem text-pink-400 mr-3"></i>Card Rarities
+      </h2>
+      <p class="text-gray-400 text-center mb-12">Collect anime characters across 6 rarity tiers</p>
+      
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div class="glass rounded-xl p-4 text-center border-2 border-gray-500">
+          <div class="text-3xl mb-2">⚪</div>
+          <div class="font-bold text-gray-400">Common</div>
+          <div class="text-xs text-gray-500">50% drop</div>
+        </div>
+        <div class="glass rounded-xl p-4 text-center border-2 border-green-500">
+          <div class="text-3xl mb-2">🟢</div>
+          <div class="font-bold text-green-400">Uncommon</div>
+          <div class="text-xs text-gray-500">25% drop</div>
+        </div>
+        <div class="glass rounded-xl p-4 text-center border-2 border-blue-500">
+          <div class="text-3xl mb-2">🔵</div>
+          <div class="font-bold text-blue-400">Rare</div>
+          <div class="text-xs text-gray-500">15% drop</div>
+        </div>
+        <div class="glass rounded-xl p-4 text-center border-2 border-purple-500 glow">
+          <div class="text-3xl mb-2">🟣</div>
+          <div class="font-bold text-purple-400">Epic</div>
+          <div class="text-xs text-gray-500">7% drop • GIF</div>
+        </div>
+        <div class="glass rounded-xl p-4 text-center border-2 border-yellow-500 glow">
+          <div class="text-3xl mb-2">🟡</div>
+          <div class="font-bold text-yellow-400">Legendary</div>
+          <div class="text-xs text-gray-500">2.5% drop • GIF</div>
+        </div>
+        <div class="glass rounded-xl p-4 text-center border-2 border-pink-500 glow" style="box-shadow: 0 0 30px rgba(236, 72, 153, 0.5);">
+          <div class="text-3xl mb-2">💎</div>
+          <div class="font-bold text-pink-400">Mythic</div>
+          <div class="text-xs text-gray-500">0.5% drop • Special</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pair Device Section -->
+  <section id="pair" class="py-20 px-6">
+    <div class="container mx-auto max-w-2xl">
+      <div class="glass rounded-3xl p-8 glow">
+        <h2 class="text-3xl font-bold text-center mb-2">
+          <i class="fas fa-link text-purple-400 mr-3"></i>Pair Your Device
+        </h2>
+        <p class="text-gray-400 text-center mb-8">Link your WhatsApp number using pairing code</p>
+        
+        <div class="space-y-6">
+          <div>
+            <label class="block text-gray-300 mb-2">Phone Number (with country code)</label>
+            <div class="flex">
+              <span class="glass px-4 py-3 rounded-l-xl text-gray-400 border-r border-white/10">+</span>
+              <input type="tel" id="phoneNumber" placeholder="1234567890" 
+                class="flex-1 bg-white/10 px-4 py-3 rounded-r-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Example: 1234567890 (without + or spaces)</p>
+          </div>
+          
+          <button onclick="requestPairing()" id="pairBtn"
+            class="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl font-bold hover:opacity-90 transition flex items-center justify-center">
+            <i class="fas fa-qrcode mr-2"></i>Get Pairing Code
+          </button>
+          
+          <div id="pairingResult" class="hidden mt-6 p-4 rounded-xl transition-all"></div>
+        </div>
+        
+        <div class="mt-8 p-4 bg-yellow-500/10 rounded-xl border border-yellow-500/30">
+          <h4 class="font-bold text-yellow-400 mb-3"><i class="fas fa-info-circle mr-2"></i>How to Pair</h4>
+          <ol class="text-sm text-gray-300 space-y-2">
+            <li class="flex items-start">
+              <span class="bg-yellow-500/20 text-yellow-400 w-6 h-6 rounded-full flex items-center justify-center mr-3 flex-shrink-0">1</span>
+              <span>Deploy the bot on your server (Heroku, VPS, or local)</span>
+            </li>
+            <li class="flex items-start">
+              <span class="bg-yellow-500/20 text-yellow-400 w-6 h-6 rounded-full flex items-center justify-center mr-3 flex-shrink-0">2</span>
+              <span>Set your phone number in the .env file as <code class="bg-black/30 px-2 py-0.5 rounded">OWNER_NUMBER</code></span>
+            </li>
+            <li class="flex items-start">
+              <span class="bg-yellow-500/20 text-yellow-400 w-6 h-6 rounded-full flex items-center justify-center mr-3 flex-shrink-0">3</span>
+              <span>Run <code class="bg-black/30 px-2 py-0.5 rounded">npm start</code> - pairing code appears in terminal</span>
+            </li>
+            <li class="flex items-start">
+              <span class="bg-yellow-500/20 text-yellow-400 w-6 h-6 rounded-full flex items-center justify-center mr-3 flex-shrink-0">4</span>
+              <span>Open WhatsApp → Settings → Linked Devices → Link a Device</span>
+            </li>
+            <li class="flex items-start">
+              <span class="bg-yellow-500/20 text-yellow-400 w-6 h-6 rounded-full flex items-center justify-center mr-3 flex-shrink-0">5</span>
+              <span>Enter the 8-digit pairing code from the terminal</span>
+            </li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Commands Section -->
+  <section id="commands" class="py-20 px-6 bg-black/20">
+    <div class="container mx-auto">
+      <h2 class="text-4xl font-bold text-center mb-4">
+        <i class="fas fa-terminal text-purple-400 mr-3"></i>All Commands
+      </h2>
+      <p class="text-gray-400 text-center mb-12">Over 100 commands across multiple categories</p>
+      
+      <!-- Command Filter -->
+      <div class="flex flex-wrap justify-center gap-2 mb-8">
+        <button onclick="filterCommands('all')" class="cmd-filter active px-4 py-2 rounded-full glass hover:bg-purple-500/30 transition" data-filter="all">All</button>
+        <button onclick="filterCommands('economy')" class="cmd-filter px-4 py-2 rounded-full glass hover:bg-green-500/30 transition" data-filter="economy">💰 Economy</button>
+        <button onclick="filterCommands('casino')" class="cmd-filter px-4 py-2 rounded-full glass hover:bg-red-500/30 transition" data-filter="casino">🎰 Casino</button>
+        <button onclick="filterCommands('cards')" class="cmd-filter px-4 py-2 rounded-full glass hover:bg-pink-500/30 transition" data-filter="cards">🃏 Cards</button>
+        <button onclick="filterCommands('admin')" class="cmd-filter px-4 py-2 rounded-full glass hover:bg-yellow-500/30 transition" data-filter="admin">👑 Admin</button>
+        <button onclick="filterCommands('media')" class="cmd-filter px-4 py-2 rounded-full glass hover:bg-blue-500/30 transition" data-filter="media">📥 Media</button>
+        <button onclick="filterCommands('tools')" class="cmd-filter px-4 py-2 rounded-full glass hover:bg-purple-500/30 transition" data-filter="tools">🔧 Tools</button>
+        <button onclick="filterCommands('fun')" class="cmd-filter px-4 py-2 rounded-full glass hover:bg-indigo-500/30 transition" data-filter="fun">🎮 Fun</button>
+      </div>
+      
+      <div id="commandsList" class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <!-- Commands loaded via JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Deploy Section -->
+  <section id="deploy" class="py-20 px-6">
+    <div class="container mx-auto max-w-5xl">
+      <h2 class="text-4xl font-bold text-center mb-4">
+        <i class="fas fa-rocket text-purple-400 mr-3"></i>Deploy Your Bot
+      </h2>
+      <p class="text-gray-400 text-center mb-12">Choose your preferred deployment method</p>
+      
+      <div class="grid md:grid-cols-2 gap-6">
+        <!-- Heroku -->
+        <div class="glass rounded-2xl p-6 card-hover transition-all">
+          <div class="flex items-center mb-4">
+            <img src="https://www.herokucdn.com/favicons/favicon.ico" class="w-8 h-8 mr-3">
+            <h3 class="text-xl font-bold">Heroku</h3>
+            <span class="ml-auto px-2 py-1 bg-green-500/20 rounded text-xs text-green-400">Recommended</span>
+          </div>
+          <p class="text-gray-400 mb-4 text-sm">One-click deployment with automatic builds and free tier available.</p>
+          <a href="https://heroku.com/deploy?template=https://github.com/infex1rn/NEXUS-MD" target="_blank"
+            class="block w-full py-3 bg-purple-600 rounded-lg text-center hover:bg-purple-700 transition font-bold">
+            <i class="fas fa-external-link-alt mr-2"></i>Deploy to Heroku
+          </a>
+        </div>
+
+        <!-- Docker -->
+        <div class="glass rounded-2xl p-6 card-hover transition-all">
+          <div class="flex items-center mb-4">
+            <i class="fab fa-docker text-blue-400 text-3xl mr-3"></i>
+            <h3 class="text-xl font-bold">Docker</h3>
+          </div>
+          <p class="text-gray-400 mb-4 text-sm">Run in isolated container on any Docker-compatible host.</p>
+          <pre class="bg-black/50 p-3 rounded-lg text-sm overflow-x-auto mb-3"><code>docker build -t nexus-md .
+docker run -d --name nexus-md \
+  -e OWNER_NUMBER=your_number \
+  nexus-md</code></pre>
+        </div>
+
+        <!-- Cloudflare -->
+        <div class="glass rounded-2xl p-6 card-hover transition-all">
+          <div class="flex items-center mb-4">
+            <i class="fas fa-cloud text-orange-400 text-3xl mr-3"></i>
+            <h3 class="text-xl font-bold">Cloudflare Workers</h3>
+            <span class="ml-auto px-2 py-1 bg-blue-500/20 rounded text-xs text-blue-400">Dashboard Only</span>
+          </div>
+          <p class="text-gray-400 mb-4 text-sm">Deploy this dashboard interface to Cloudflare Workers.</p>
+          <pre class="bg-black/50 p-3 rounded-lg text-sm overflow-x-auto mb-3"><code>npm install -g wrangler
+wrangler login
+npx wrangler deploy</code></pre>
+        </div>
+
+        <!-- VPS -->
+        <div class="glass rounded-2xl p-6 card-hover transition-all">
+          <div class="flex items-center mb-4">
+            <i class="fas fa-server text-green-400 text-3xl mr-3"></i>
+            <h3 class="text-xl font-bold">VPS / Local</h3>
+          </div>
+          <p class="text-gray-400 mb-4 text-sm">Run on any Linux server or your local machine.</p>
+          <pre class="bg-black/50 p-3 rounded-lg text-sm overflow-x-auto mb-3"><code>git clone https://github.com/infex1rn/NEXUS-MD
+cd NEXUS-MD
+npm install
+cp .env.example .env
+# Edit .env with your config
+npm start</code></pre>
+        </div>
+      </div>
+
+      <!-- Environment Variables -->
+      <div class="glass rounded-2xl p-6 mt-8">
+        <h3 class="text-xl font-bold mb-4"><i class="fas fa-cog mr-2 text-gray-400"></i>Environment Variables</h3>
+        <div class="grid md:grid-cols-2 gap-4 text-sm">
+          <div class="bg-black/30 p-3 rounded-lg">
+            <code class="text-purple-400">OWNER_NUMBER</code>
+            <p class="text-gray-500 mt-1">Your WhatsApp number (with country code)</p>
+          </div>
+          <div class="bg-black/30 p-3 rounded-lg">
+            <code class="text-purple-400">PREFIX</code>
+            <p class="text-gray-500 mt-1">Bot command prefix (default: .)</p>
+          </div>
+          <div class="bg-black/30 p-3 rounded-lg">
+            <code class="text-purple-400">FIREBASE_PROJECT_ID</code>
+            <p class="text-gray-500 mt-1">Firebase project ID</p>
+          </div>
+          <div class="bg-black/30 p-3 rounded-lg">
+            <code class="text-purple-400">FIREBASE_CLIENT_EMAIL</code>
+            <p class="text-gray-500 mt-1">Firebase service account email</p>
+          </div>
+          <div class="bg-black/30 p-3 rounded-lg">
+            <code class="text-purple-400">FIREBASE_PRIVATE_KEY</code>
+            <p class="text-gray-500 mt-1">Firebase private key (from JSON)</p>
+          </div>
+          <div class="bg-black/30 p-3 rounded-lg">
+            <code class="text-purple-400">OPENAI_API_KEY</code>
+            <p class="text-gray-500 mt-1">OpenAI API key for GPT/DALL-E</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="glass py-8 px-6 mt-20">
+    <div class="container mx-auto text-center">
+      <div class="flex justify-center items-center space-x-3 mb-4">
+        <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
+          <i class="fas fa-robot text-xl"></i>
+        </div>
+        <span class="text-xl font-bold">NEXUS-MD</span>
+      </div>
+      <p class="text-gray-400 mb-4">Built with <i class="fas fa-heart text-red-500"></i> using Baileys & Firebase</p>
+      <div class="flex justify-center space-x-6">
+        <a href="https://github.com/infex1rn/NEXUS-MD" target="_blank" class="text-gray-400 hover:text-white transition">
+          <i class="fab fa-github text-2xl"></i>
+        </a>
+      </div>
+      <p class="text-gray-600 text-sm mt-6">© 2024 NEXUS-MD. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Commands data
+    const allCommands = {
+      economy: [
+        { name: 'balance', desc: 'Check your wallet and bank balance', alias: 'bal' },
+        { name: 'daily', desc: 'Claim daily rewards with streak bonus' },
+        { name: 'work', desc: 'Work a job to earn coins' },
+        { name: 'mine', desc: 'Mine for valuable resources' },
+        { name: 'fish', desc: 'Go fishing for rewards' },
+        { name: 'hunt', desc: 'Hunt animals for coins' },
+        { name: 'crime', desc: 'Risky illegal activity for big rewards' },
+        { name: 'pay', desc: 'Transfer coins to another user', usage: '.pay @user 100' },
+        { name: 'deposit', desc: 'Deposit coins to bank', alias: 'dep' },
+        { name: 'withdraw', desc: 'Withdraw coins from bank', alias: 'with' },
+        { name: 'leaderboard', desc: 'View the richest users', alias: 'lb' }
+      ],
+      casino: [
+        { name: 'slots', desc: 'Play the slot machine', usage: '.slots 100' },
+        { name: 'coinflip', desc: 'Bet on heads or tails', usage: '.coinflip heads 100' },
+        { name: 'dice', desc: 'Bet on dice roll outcome', usage: '.dice 6 100' },
+        { name: 'blackjack', desc: 'Play blackjack against dealer', usage: '.bj 100', alias: 'bj' },
+        { name: 'roulette', desc: 'Bet on roulette wheel', usage: '.roulette red 100' },
+        { name: 'crash', desc: 'Cash out before crash', usage: '.crash 100' }
+      ],
+      cards: [
+        { name: 'claim', desc: 'Claim a dropped card', usage: '.claim ABC123' },
+        { name: 'collection', desc: 'View your card collection', alias: 'inv' },
+        { name: 'send', desc: 'Send card to another user', usage: '.send @user ABC123' },
+        { name: 'gacha', desc: 'Pull random cards (costs coins)', usage: '.gacha 1' },
+        { name: 'cardinfo', desc: 'View card details', usage: '.cardinfo ABC123' },
+        { name: 'favorite', desc: 'Lock/unlock card from trades', usage: '.fav ABC123' },
+        { name: 'sell', desc: 'Sell card for coins', usage: '.sell ABC123' }
+      ],
+      admin: [
+        { name: 'tagall', desc: 'Tag all group members' },
+        { name: 'hidetag', desc: 'Hidden tag all members' },
+        { name: 'kick', desc: 'Remove member from group', usage: '.kick @user' },
+        { name: 'add', desc: 'Add member to group', usage: '.add 1234567890' },
+        { name: 'promote', desc: 'Make member an admin', usage: '.promote @user' },
+        { name: 'demote', desc: 'Remove admin privileges', usage: '.demote @user' },
+        { name: 'mute', desc: 'Mute/unmute group chat' },
+        { name: 'antilink', desc: 'Toggle antilink protection' },
+        { name: 'warn', desc: 'Warn a user', usage: '.warn @user reason' },
+        { name: 'delwarn', desc: 'Remove user warnings', usage: '.delwarn @user' },
+        { name: 'warns', desc: 'Check user warnings' },
+        { name: 'welcome', desc: 'Set welcome message' }
+      ],
+      media: [
+        { name: 'play', desc: 'Download YouTube audio', usage: '.play song name' },
+        { name: 'video', desc: 'Download YouTube video', usage: '.video video name' },
+        { name: 'sticker', desc: 'Create sticker from image', alias: 's' },
+        { name: 'yts', desc: 'Search YouTube videos' },
+        { name: 'img', desc: 'Search and download images' },
+        { name: 'tiktok', desc: 'Download TikTok video', alias: 'tt' },
+        { name: 'instagram', desc: 'Download Instagram post', alias: 'ig' },
+        { name: 'facebook', desc: 'Download Facebook video', alias: 'fb' },
+        { name: 'rembg', desc: 'Remove image background' },
+        { name: 'togif', desc: 'Convert sticker to GIF' },
+        { name: 'toimg', desc: 'Convert sticker to image' }
+      ],
+      tools: [
+        { name: 'gpt', desc: 'Chat with AI', usage: '.gpt your question' },
+        { name: 'dalle', desc: 'Generate AI images', usage: '.dalle description' },
+        { name: 'translate', desc: 'Translate text', usage: '.tr en text', alias: 'tr' },
+        { name: 'tts', desc: 'Text to speech', usage: '.tts hello' },
+        { name: 'ocr', desc: 'Extract text from image' },
+        { name: 'tempmail', desc: 'Get temporary email' },
+        { name: 'weather', desc: 'Get weather info', usage: '.weather city' },
+        { name: 'qr', desc: 'Generate QR code', usage: '.qr text' },
+        { name: 'short', desc: 'Shorten URL', usage: '.short url' },
+        { name: 'calc', desc: 'Calculator', usage: '.calc 2+2' },
+        { name: 'base64', desc: 'Encode/decode base64' }
+      ],
+      fun: [
+        { name: 'tictactoe', desc: 'Play tic-tac-toe', alias: 'ttt' },
+        { name: 'couple', desc: 'Random couple pairing' },
+        { name: '8ball', desc: 'Magic 8-ball answers' },
+        { name: 'joke', desc: 'Get a random joke' },
+        { name: 'quote', desc: 'Inspirational quotes' },
+        { name: 'fact', desc: 'Random fun facts' },
+        { name: 'meme', desc: 'Random meme' },
+        { name: 'flip', desc: 'Flip a coin' },
+        { name: 'roll', desc: 'Roll dice' },
+        { name: 'rate', desc: 'Rate something 1-10' },
+        { name: 'truthdare', desc: 'Truth or dare', alias: 'td' },
+        { name: 'reactions', desc: 'Send reaction stickers' },
+        { name: 'afk', desc: 'Set AFK status' }
+      ]
+    };
+
+    const categoryColors = {
+      economy: 'green',
+      casino: 'red',
+      cards: 'pink',
+      admin: 'yellow',
+      media: 'blue',
+      tools: 'purple',
+      fun: 'indigo'
+    };
+
+    const categoryIcons = {
+      economy: 'fa-coins',
+      casino: 'fa-dice',
+      cards: 'fa-id-card',
+      admin: 'fa-user-shield',
+      media: 'fa-photo-video',
+      tools: 'fa-tools',
+      fun: 'fa-gamepad'
+    };
+
+    // Render commands
+    function renderCommands(filter = 'all') {
+      const container = document.getElementById('commandsList');
+      let html = '';
+      
+      for (const [category, cmds] of Object.entries(allCommands)) {
+        if (filter !== 'all' && filter !== category) continue;
+        
+        const color = categoryColors[category];
+        const icon = categoryIcons[category];
+        
+        html += `
+          <div class="glass rounded-xl p-4 cmd-card" data-category="${category}">
+            <h3 class="font-bold mb-3 flex items-center text-${color}-400">
+              <i class="fas ${icon} mr-2"></i>
+              ${category.charAt(0).toUpperCase() + category.slice(1)}
+              <span class="ml-auto text-xs bg-${color}-500/20 px-2 py-1 rounded">${cmds.length}</span>
+            </h3>
+            <div class="space-y-2 max-h-64 overflow-y-auto">
+              ${cmds.map(c => `
+                <div class="flex items-start text-sm hover:bg-white/5 p-1 rounded transition">
+                  <code class="text-${color}-400 mr-2 flex-shrink-0">.${c.name}</code>
+                  <span class="text-gray-400 text-xs">${c.desc}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
+      container.innerHTML = html;
+    }
+
+    // Filter commands
+    function filterCommands(category) {
+      document.querySelectorAll('.cmd-filter').forEach(btn => {
+        btn.classList.remove('bg-purple-500/50');
+        if (btn.dataset.filter === category) {
+          btn.classList.add('bg-purple-500/50');
+        }
+      });
+      renderCommands(category);
+    }
+
+    // Toggle mobile menu
+    function toggleMenu() {
+      const menu = document.getElementById('mobileMenu');
+      menu.classList.toggle('hidden');
+    }
+
+    // Request pairing
+    async function requestPairing() {
+      const phone = document.getElementById('phoneNumber').value.trim();
+      const result = document.getElementById('pairingResult');
+      const btn = document.getElementById('pairBtn');
+      
+      if (!phone) {
+        showResult('error', 'Please enter your phone number');
+        return;
+      }
+      
+      if (!/^\d{10,15}$/.test(phone.replace(/\D/g, ''))) {
+        showResult('error', 'Invalid phone number format');
+        return;
+      }
+      
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+      
+      // Simulate API call (in production, this would call your backend)
+      setTimeout(() => {
+        showResult('success', `
+          <h4 class="font-bold text-green-400 mb-2"><i class="fas fa-check-circle mr-2"></i>Ready to Pair!</h4>
+          <p class="text-sm mb-3">Phone: <code class="bg-black/30 px-2 py-0.5 rounded">+${phone.replace(/\D/g, '')}</code></p>
+          <div class="bg-black/30 p-3 rounded-lg text-sm">
+            <p class="mb-2">Next steps:</p>
+            <ol class="text-gray-400 space-y-1">
+              <li>1. Start the bot: <code class="text-purple-400">npm start</code></li>
+              <li>2. Copy the 8-digit code from terminal</li>
+              <li>3. Enter it in WhatsApp → Linked Devices</li>
+            </ol>
+          </div>
+        `);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-qrcode mr-2"></i>Get Pairing Code';
+      }, 1500);
+    }
+
+    function showResult(type, message) {
+      const result = document.getElementById('pairingResult');
+      result.classList.remove('hidden');
+      
+      if (type === 'error') {
+        result.className = 'mt-6 p-4 rounded-xl bg-red-500/20 border border-red-500';
+        result.innerHTML = `<i class="fas fa-exclamation-circle mr-2 text-red-400"></i>${message}`;
+      } else {
+        result.className = 'mt-6 p-4 rounded-xl bg-green-500/20 border border-green-500';
+        result.innerHTML = message;
+      }
+    }
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+      renderCommands();
+    });
+  </script>
+</body>
+</html>
