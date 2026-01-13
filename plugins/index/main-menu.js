@@ -35,6 +35,9 @@ let handler = async (m, { conn, usedPrefix }) => {
     fun: '🎮',
     utility: '⚙️',
     owner: '👑',
+    economy: '💰',
+    casino: '🎰',
+    cards: '🎴',
     other: '📦'
   }
   
@@ -47,6 +50,9 @@ let handler = async (m, { conn, usedPrefix }) => {
     fun: 'Fun & Games',
     utility: 'Utility',
     owner: 'Owner Only',
+    economy: 'Economy',
+    casino: 'Casino',
+    cards: 'Anime Cards',
     other: 'Other'
   }
   
@@ -64,7 +70,7 @@ let handler = async (m, { conn, usedPrefix }) => {
 `
 
   // Sort categories
-  const sortOrder = ['main', 'group', 'downloader', 'sticker', 'tools', 'fun', 'utility', 'owner', 'other']
+  const sortOrder = ['main', 'economy', 'casino', 'cards', 'group', 'downloader', 'sticker', 'tools', 'fun', 'utility', 'owner', 'other']
   const sortedCategories = Object.keys(commands).sort((a, b) => {
     const indexA = sortOrder.indexOf(a)
     const indexB = sortOrder.indexOf(b)
