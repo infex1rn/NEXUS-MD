@@ -1,0 +1,38 @@
+name = "nexus-md-dashboard"
+main = "web/worker.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+BOT_NAME = "NEXUS-MD"
+
+# KV Namespace for session storage
+# Create with: wrangler kv:namespace create "SESSIONS"
+# [[kv_namespaces]]
+# binding = "SESSIONS"
+# id = "your-kv-namespace-id"
+
+# Durable Objects for real-time state (optional)
+# [[durable_objects.bindings]]
+# name = "BOT_STATE"
+# class_name = "BotState"
+
+# Environment variables (set via wrangler secret put)
+# - FIREBASE_PROJECT_ID
+# - FIREBASE_CLIENT_EMAIL
+# - FIREBASE_PRIVATE_KEY
+# - OWNER_NUMBER
+# - JWT_SECRET
+
+[site]
+bucket = "./web/public"
+
+# Development settings
+[dev]
+port = 8787
+local_protocol = "http"
+
+# Production deployment
+[env.production]
+name = "nexus-md-dashboard"
+route = { pattern = "nexus-md.your-domain.workers.dev", custom_domain = false }

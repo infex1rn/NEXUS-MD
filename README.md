@@ -1,68 +1,266 @@
-# 🌌 NEXUS-MD WhatsApp Bot
+# NEXUS-MD
 
 <p align="center">
-  <img src="https://telegra.ph/file/your-image-link-here.jpg" alt="NEXUS-MD" width="200"/>
+  <img src="https://img.shields.io/badge/Node.js-18+-green?style=for-the-badge&logo=node.js" />
+  <img src="https://img.shields.io/badge/WhatsApp-Multi--Device-25D366?style=for-the-badge&logo=whatsapp" />
+  <img src="https://img.shields.io/badge/Firebase-Database-FFCA28?style=for-the-badge&logo=firebase" />
+  <img src="https://img.shields.io/badge/Commands-70+-blue?style=for-the-badge" />
 </p>
 
-<p align="center">
-  <strong>NEXUS-MD</strong> is a powerful, multi-device WhatsApp bot built from scratch for high performance, group management, and AI-driven automation.
-</p>
+A powerful, modular, and high-performance WhatsApp Bot built with [@whiskeysockets/baileys](https://github.com/whiskeysockets/baileys) and Firebase. Inspired by popular bots like GURU-Ai.
 
----
+## ✨ Features
 
-## 🚀 Features & Commands (30+)
+- 🔗 **Pairing Code System** - Link your WhatsApp via terminal (no QR scanning needed)
+- 🔌 **70+ Modular Commands** - Easily extendable plugin system
+- 🔥 **Firebase Integration** - Persistent data storage with Firestore
+- 📱 **Multi-Device Support** - Works with WhatsApp Web Multi-Device
+- 🚀 **High Performance** - Optimized for speed and reliability
+- 🐳 **Docker Ready** - Easy deployment with Docker
+- ⚡ **Auto-Reload Plugins** - Hot reload plugins without restart
 
-### 🛡️ Group Management
-- `.tagall` - Mention every member in the group.
-- `.hidetag` - Tag everyone invisibly.
-- `.kick @user` - Remove a specific member.
-- `.add 234...` - Add a member via phone number.
-- `.promote @user` - Make a member an admin.
-- `.demote @user` - Remove admin privileges.
-- `.mute / .unmute` - Lock or unlock the chat.
-- `.antilink on/off` - Automatically kick users who send links.
-- `.warn @user` - Give a strike; auto-kicks at 3 warnings.
-- `.setwelcome` - Set custom welcome messages.
-- `.setgoodbye` - Set custom goodbye messages.
-- `.poll Question | Opt1 | Opt2` - Create a WhatsApp poll.
+## 📦 Complete Command List (70+ Commands)
 
-### 📥 Media & Downloaders
-- `.play [song]` - Download MP3 from YouTube.
-- `.video [link]` - Download videos from YT, IG, or TikTok.
-- `.sticker` - Convert image/video to a sticker.
-- `.yts [query]` - Search YouTube results.
-- `.img [query]` - Fetch high-quality images.
-- `.fb [link]` - Download Facebook videos.
-- `.gitclone [repo]` - Send a GitHub repo as a ZIP file.
+### 🏠 Main Commands
+| Command | Description |
+|---------|-------------|
+| `.menu` / `.help` | Display bot menu with all commands |
+| `.list` | List all commands by category |
+| `.ping` | Check bot response time |
+| `.alive` | Check if bot is online |
+| `.owner` | Show bot owner information |
 
-### 🤖 AI & Productivity
-- `.gpt [query]` - Chat with ChatGPT/Gemini AI.
-- `.dalle [prompt]` - Generate AI images from text.
-- `.rembg` - Remove image background.
-- `.tr [lang] [text]` - Translate text into any language.
-- `.tts [text]` - Convert text to a voice note.
-- `.ocr` - Extract text from an image.
-- `.tempmail` - Generate a temporary 10-minute email.
+### 👥 Group Admin Commands
+| Command | Description |
+|---------|-------------|
+| `.tagall [msg]` | Tag all group members |
+| `.hidetag [msg]` | Tag all members invisibly |
+| `.kick @user` | Remove a member from group |
+| `.add <number>` | Add a member to group |
+| `.promote @user` | Promote member to admin |
+| `.demote @user` | Demote admin to member |
+| `.mute` / `.unmute` | Lock/unlock group chat |
+| `.antilink on/off` | Enable/disable link protection |
+| `.warn @user` | Warn a user (auto-kick at 3) |
+| `.warns [@user]` | Check user warnings |
+| `.delwarn @user` | Clear user warnings |
+| `.welcome on/off` | Toggle welcome messages |
+| `.setwelcome <msg>` | Set custom welcome message |
+| `.setbye <msg>` | Set custom goodbye message |
+| `.groupinfo` | Get detailed group info |
+| `.link` | Get group invite link |
+| `.revoke` | Reset group invite link |
+| `.invite <number>` | Send invite to user |
+| `.poll <q> \| <opt1> \| <opt2>` | Create a poll |
+| `.staff` | List all group admins |
 
-### 🎮 Fun & Utility
-- `.couple` - Randomly pair two members as a "couple."
-- `.tictactoe` - Play a game in the chat.
-- `.afk [reason]` - Set your status as away.
-- `.fact` - Send a random interesting fact.
+### 📥 Downloader Commands
+| Command | Description |
+|---------|-------------|
+| `.play <song>` | Search & download YouTube audio |
+| `.video <name/url>` | Download YouTube/TikTok videos |
+| `.yts <query>` | Search YouTube videos |
+| `.ig <url>` | Download Instagram media |
+| `.tiktok <url>` | Download TikTok videos |
+| `.fb <url>` | Download Facebook videos |
+| `.img <query>` | Search and download images |
 
----
+### 🎨 Sticker Commands
+| Command | Description |
+|---------|-------------|
+| `.sticker` / `.s` | Convert image/video to sticker |
+| `.toimg` | Convert sticker to image |
+| `.togif` | Convert animated sticker to GIF |
 
-## 🛠️ Setup & Installation
+### 🔧 Tools Commands
+| Command | Description |
+|---------|-------------|
+| `.gpt <message>` | Chat with AI assistant |
+| `.ai <message>` | Chat with AI (alias) |
+| `.resetai` | Clear AI chat history |
+| `.dalle <prompt>` | Generate AI images |
+| `.translate <lang> <text>` | Translate text |
+| `.tts [lang] <text>` | Text to voice note |
+| `.ocr` | Extract text from image |
+| `.tempmail` | Generate temporary email |
+| `.inbox` | Check temp email inbox |
+| `.rembg` | Remove image background |
+| `.upscale` | Enhance image quality |
+| `.short <url>` | Shorten a URL |
+| `.qr <text>` | Generate QR code |
 
-### 1. Pairing
-NEXUS-MD supports **Pairing Code** linking. You do not need to scan a QR code.
-1. Run the bot.
-2. Enter your phone number (with country code).
-3. Copy the 8-character code and paste it into your WhatsApp "Linked Devices" notification.
+### 🎮 Fun & Games
+| Command | Description |
+|---------|-------------|
+| `.couple` | Random couple matching |
+| `.tictactoe @user` | Play tic-tac-toe |
+| `.8ball <question>` | Magic 8-ball |
+| `.dice [sides] [count]` | Roll dice |
+| `.flip` | Flip a coin |
+| `.rate <something>` | Rate something /10 |
+| `.joke` | Get a random joke |
+| `.truth` / `.dare` | Truth or dare |
+| `.fact` | Get random facts |
+| `.quote` | Get inspirational quotes |
+| `.meme` | Get random memes |
+| `.slap @user` | Slap someone |
+| `.hug @user` | Hug someone |
+| `.pat @user` | Pat someone |
 
-### 2. Manual Installation
+### ⚙️ Utility Commands
+| Command | Description |
+|---------|-------------|
+| `.afk [reason]` | Set AFK status |
+| `.weather <city>` | Get weather info |
+| `.runtime` | Show bot uptime |
+| `.profile [@user]` | Get user profile |
+| `.calc <expression>` | Calculator |
+| `.remind <time> <msg>` | Set a reminder |
+| `.base64 encode/decode <text>` | Base64 encode/decode |
+
+### ⚙️ Config Commands
+| Command | Description |
+|---------|-------------|
+| `.enable <option> on/off` | Toggle bot features |
+| `.on <option>` | Enable a feature |
+| `.off <option>` | Disable a feature |
+
+### 👑 Owner Commands
+| Command | Description |
+|---------|-------------|
+| `.broadcast <msg>` | Broadcast to all chats |
+| `.block @user` | Block a user |
+| `.unblock @user` | Unblock a user |
+| `.ban @user` | Ban user from bot |
+| `.unban @user` | Unban a user |
+| `.join <link>` | Join a group |
+| `.leave` | Leave current group |
+| `.setprefix <char>` | Change bot prefix |
+| `.stats` | Show bot statistics |
+| `> <code>` | Execute JavaScript |
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18 or higher
+- A WhatsApp account
+- Firebase project (optional, for persistent database)
+
+### Installation
+
 ```bash
-git clone [https://github.com/infex1rn/NEXUS-MD.git](https://github.com/infex1rn/NEXUS-MD.git)
+# Clone the repository
+git clone https://github.com/your-username/NEXUS-MD.git
 cd NEXUS-MD
+
+# Install dependencies
 npm install
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your settings
+
+# Start the bot
 npm start
+```
+
+### Configuration (.env)
+```env
+PHONE_NUMBER=1234567890
+OWNERS=1234567890;YourName
+
+# Firebase (optional)
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_CLIENT_EMAIL=your-service-account@project.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+```
+
+### Link Your WhatsApp
+1. Start the bot with `npm start`
+2. You'll receive a pairing code in the terminal
+3. Open WhatsApp → Settings → Linked Devices → Link a Device
+4. Enter the pairing code
+
+## 🔥 Firebase Setup
+
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Create a new project
+3. Go to Project Settings → Service Accounts
+4. Generate new private key
+5. Add credentials to `.env` file
+
+## 🐳 Docker Deployment
+
+```bash
+# Build the image
+docker build -t nexus-md .
+
+# Run the container
+docker run -d --name nexus-md \
+  -e PHONE_NUMBER=1234567890 \
+  -e FIREBASE_PROJECT_ID=your-project-id \
+  nexus-md
+```
+
+## 📁 Project Structure
+
+```
+NEXUS-MD/
+├── Nexus.js           # Main bot entry point
+├── handler.js         # Message handler
+├── config.js          # Bot configuration
+├── lib/
+│   ├── simple.js      # Extended WASocket
+│   ├── firebase.js    # Firebase database
+│   └── sticker.js     # Sticker utilities
+├── plugins/
+│   └── index/         # 70+ Command plugins
+├── test.js            # Test suite
+├── package.json
+├── Dockerfile
+└── .env.example
+```
+
+## 🧪 Running Tests
+
+```bash
+npm test
+```
+
+## 🔧 Creating Custom Plugins
+
+```javascript
+// plugins/index/custom-example.js
+let handler = async (m, { conn, text, usedPrefix, command }) => {
+  m.reply('Hello from custom command!')
+}
+
+handler.help = ['example']
+handler.tags = ['custom']
+handler.command = ['example', 'ex']
+handler.desc = 'Example custom command'
+
+// Optional permissions
+// handler.admin = true
+// handler.group = true
+// handler.owner = true
+
+export default handler
+```
+
+## ⚠️ Disclaimer
+
+This bot is for educational purposes. Use responsibly and in accordance with WhatsApp's Terms of Service.
+
+## 📄 License
+
+MIT License
+
+## 🤝 Credits
+
+- Inspired by [GURU-Ai](https://github.com/Guru322/GURU-Ai)
+- Built with [@whiskeysockets/baileys](https://github.com/whiskeysockets/baileys)
+
+---
+
+<p align="center">Made with ❤️ by NEXUS-MD Team</p>
