@@ -23,6 +23,7 @@ import {
 
 import { makeWASocketExtended, protoType, serialize } from './lib/simple.js'
 import FirebaseDB from './lib/firebase.js'
+import { useFirebaseAuthState } from './lib/auth/firebase-auth.js'
 import { createServer, pairingState } from './server.js'
 
 dotenv.config()
@@ -110,8 +111,24 @@ function printBanner() {
 
 printBanner()
 
-// Auth state
-const { state, saveCreds } = await useMultiFileAuthState('./auth_info')
+// Auth state - Use Firebase for session storage if available, fallback to file-based
+let state, saveCreds
+
+// Check if Firebase is configured
+const useFirebase = process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY
+
+if (useFirebase) {
+  console.log(chalk.blue('[INFO] Using Firebase for session storage'))
+  const firebaseAuth = await useFirebaseAuthState()
+  state = firebaseAuth.state
+  saveCreds = firebaseAuth.saveCreds
+} else {
+  console.log(chalk.yellow('[INFO] Firebase not configured, using file-based session storage'))
+  console.log(chalk.yellow('[INFO] Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY for cloud session storage'))
+  const fileAuth = await useMultiFileAuthState('./auth_info')
+  state = fileAuth.state
+  saveCreds = fileAuth.saveCreds
+}
 
 // Use fixed version like GURU-Ai for better compatibility with pairing codes
 const version = [2, 3000, 1025091846]
