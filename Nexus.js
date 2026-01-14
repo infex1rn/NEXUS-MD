@@ -50,8 +50,6 @@ logger.level = 'fatal'
 const msgRetryCounterCache = new NodeCache()
 const groupMetadataCache = new NodeCache({ stdTTL: 5 * 60, useClones: false })
 
-const phoneNumberFromEnv = process.env.PHONE_NUMBER
-
 const __dirname_current = global.__dirname(import.meta.url)
 global.opts = new Object(yargs(process.argv.slice(2)).exitProcess(false).parse())
 
@@ -180,28 +178,9 @@ async function requestPairingCode(phoneNumber) {
 // Start web server for pairing and dashboard
 createServer(conn, requestPairingCode)
 
-// Handle pairing code from environment variable
+// Direct users to web interface for pairing
 if (!conn.authState.creds.registered) {
-  if (phoneNumberFromEnv) {
-    const phoneNumber = phoneNumberFromEnv.replace(/[^0-9]/g, '')
-    
-    if (!phoneNumber || phoneNumber.length < 8) {
-      console.log(chalk.red("Invalid phone number format. Please include country code (Example: 1234567890)"))
-      console.log(chalk.yellow("Or use the web interface to pair your device."))
-    } else {
-      // Request pairing code after connection is established
-      setTimeout(async () => {
-        try {
-          await requestPairingCode(phoneNumber)
-        } catch (error) {
-          console.log(chalk.red("Failed to generate pairing code:"), error.message)
-        }
-      }, 3000)
-    }
-  } else {
-    console.log(chalk.yellow("\n[INFO] No phone number set in environment."))
-    console.log(chalk.cyan("📱 Use the web interface to pair your device!\n"))
-  }
+  console.log(chalk.cyan("\n📱 Use the web interface to pair your device!\n"))
 }
 
 console.log(chalk.yellow('\n[INFO] Waiting for connection...\n'))
