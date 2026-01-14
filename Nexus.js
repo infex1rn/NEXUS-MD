@@ -120,17 +120,16 @@ console.log(chalk.blue(`[INFO] Using Baileys version: ${version.join('.')}`))
 
 /**
  * Get browser configuration for pairing code compatibility
- * Uses Chrome on Linux format which is the most reliable for pairing codes
+ * Uses Ubuntu Chrome format which is proven to work with pairing codes
+ * Based on working implementations from GURU-Ai and other WhatsApp bot projects
  * @returns {Array} Browser configuration array for Baileys
  */
 function getBrowserConfig() {
-  const botName = process.env.BOTNAME || 'NEXUS-MD'
+  // Use Ubuntu Chrome format - this is proven to work with pairing codes
+  // Format: [platform, browser, version] matching GURU-Ai's working configuration
+  const browserConfig = ['Ubuntu', 'Chrome', '20.0.04']
   
-  // Use Chrome on Linux format - this is the most reliable for pairing codes
-  // Based on working implementations from other WhatsApp bot projects
-  const browserConfig = ['Chrome (Linux)', '', '']
-  
-  console.log(chalk.blue(`[INFO] Browser platform: Chrome (Linux)`))
+  console.log(chalk.blue(`[INFO] Browser platform: Ubuntu Chrome 20.0.04`))
   
   return browserConfig
 }
@@ -179,9 +178,14 @@ async function requestPairingCode(phoneNumber) {
   try {
     // Wait for socket to be ready before requesting pairing code
     // This delay is critical for the pairing code to work properly
-    await delay(2000)
+    // Using 3000ms based on GURU-Ai's working implementation
+    await delay(3000)
     
-    const code = await conn.requestPairingCode(cleanNumber)
+    // Pass a session identifier to requestPairingCode for better pairing reliability
+    // The second parameter is an optional session name/identifier
+    const botName = process.env.BOTNAME || 'NEXUS-MD'
+    const sessionId = botName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8).toUpperCase()
+    const code = await conn.requestPairingCode(cleanNumber, sessionId)
     const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code
     
     console.log(chalk.green('\n╔═══════════════════════════════════════╗'))
