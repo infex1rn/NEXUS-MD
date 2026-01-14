@@ -19,7 +19,8 @@ import {
   DisconnectReason,
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
-  Browsers
+  Browsers,
+  delay
 } from '@whiskeysockets/baileys'
 
 import { makeWASocketExtended, protoType, serialize } from './lib/simple.js'
@@ -118,35 +119,18 @@ const { version } = await fetchLatestBaileysVersion()
 console.log(chalk.blue(`[INFO] Using Baileys version: ${version.join('.')}`))
 
 /**
- * Get browser configuration with random platform selection
- * This allows the bot to generate pairing codes disguised as different devices
+ * Get browser configuration for pairing code compatibility
+ * Uses Chrome on Linux format which is the most reliable for pairing codes
  * @returns {Array} Browser configuration array for Baileys
  */
 function getBrowserConfig() {
   const botName = process.env.BOTNAME || 'NEXUS-MD'
   
-  const browserConfigs = [
-    // Linux variants
-    { name: 'Ubuntu', config: () => Browsers.ubuntu(botName) },
-    
-    // macOS variants
-    { name: 'macOS', config: () => Browsers.macOS(botName) },
-    
-    // Windows
-    { name: 'Windows', config: () => Browsers.windows(botName) },
-    
-    // Web browsers
-    { name: 'Chrome', config: () => [botName, 'Chrome', '120.0.0.0'] },
-    { name: 'Firefox', config: () => [botName, 'Firefox', '121.0'] },
-    { name: 'Safari', config: () => [botName, 'Safari', '17.0'] },
-    { name: 'Edge', config: () => [botName, 'Edge', '120.0.0.0'] },
-  ]
+  // Use Chrome on Linux format - this is the most reliable for pairing codes
+  // Based on working implementations from other WhatsApp bot projects
+  const browserConfig = ['Chrome (Linux)', '', '']
   
-  // Randomly select a browser platform
-  const selected = browserConfigs[Math.floor(Math.random() * browserConfigs.length)]
-  const browserConfig = selected.config()
-  
-  console.log(chalk.blue(`[INFO] Browser platform: ${selected.name}`))
+  console.log(chalk.blue(`[INFO] Browser platform: Chrome (Linux)`))
   
   return browserConfig
 }
@@ -187,7 +171,16 @@ async function requestPairingCode(phoneNumber) {
     throw new Error('Invalid phone number format. Please include country code (Example: 1234567890)')
   }
   
+  // Check if already registered
+  if (conn.authState?.creds?.registered) {
+    throw new Error('Device is already registered. Please unlink first.')
+  }
+  
   try {
+    // Wait for socket to be ready before requesting pairing code
+    // This delay is critical for the pairing code to work properly
+    await delay(2000)
+    
     const code = await conn.requestPairingCode(cleanNumber)
     const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code
     
