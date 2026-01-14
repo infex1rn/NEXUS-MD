@@ -616,25 +616,77 @@ npm start</code></pre>
       }
       
       btn.disabled = true;
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating Code...';
       
-      // Simulate API call (in production, this would call your backend)
+      try {
+        const res = await fetch('/api/pair', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber: phone })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          if (data.alreadyConnected) {
+            showResult('success', `
+              <h4 class="font-bold text-green-400 mb-2"><i class="fas fa-check-circle mr-2"></i>Bot Already Connected!</h4>
+              <p class="text-sm text-gray-300">Connected as: ${data.user?.name || data.user?.jid || 'Unknown'}</p>
+            `);
+          } else if (data.pairingCode) {
+            showResult('success', `
+              <h4 class="font-bold text-green-400 mb-2"><i class="fas fa-check-circle mr-2"></i>Pairing Code Generated!</h4>
+              <div class="bg-gradient-to-r from-purple-900/50 to-pink-900/50 rounded-xl p-4 my-4 text-center">
+                <p class="text-gray-400 text-sm mb-1">Your Pairing Code</p>
+                <div class="text-3xl font-bold tracking-widest text-white">${data.pairingCode}</div>
+                <p class="text-xs text-gray-400 mt-2">Expires in 60 seconds</p>
+              </div>
+              <div class="bg-black/30 p-3 rounded-lg text-sm">
+                <p class="mb-2 text-gray-300">How to use:</p>
+                <ol class="text-gray-400 space-y-1">
+                  ${data.instructions.map((i, idx) => '<li>' + (idx+1) + '. ' + i + '</li>').join('')}
+                </ol>
+              </div>
+            `);
+            // Start polling for connection status
+            startConnectionPolling();
+          }
+        } else {
+          showResult('error', data.error || 'Failed to generate pairing code');
+        }
+      } catch (e) {
+        showResult('error', 'Network error. Please try again.');
+      }
+      
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-qrcode mr-2"></i>Get Pairing Code';
+    }
+    
+    let connectionPollInterval = null;
+    
+    function startConnectionPolling() {
+      if (connectionPollInterval) clearInterval(connectionPollInterval);
+      
+      connectionPollInterval = setInterval(async () => {
+        try {
+          const res = await fetch('/api/status');
+          const data = await res.json();
+          
+          if (data.connected) {
+            clearInterval(connectionPollInterval);
+            showResult('success', `
+              <h4 class="font-bold text-green-400 mb-2"><i class="fas fa-check-circle mr-2"></i>Successfully Connected!</h4>
+              <p class="text-sm text-gray-300">Bot is now online as: ${data.user?.name || data.user?.jid || 'Unknown'}</p>
+            `);
+          }
+        } catch (e) {
+          console.error('Status poll failed:', e);
+        }
+      }, 3000);
+      
+      // Stop polling after 2 minutes
       setTimeout(() => {
-        showResult('success', `
-          <h4 class="font-bold text-green-400 mb-2"><i class="fas fa-check-circle mr-2"></i>Ready to Pair!</h4>
-          <p class="text-sm mb-3">Phone: <code class="bg-black/30 px-2 py-0.5 rounded">+${phone.replace(/\D/g, '')}</code></p>
-          <div class="bg-black/30 p-3 rounded-lg text-sm">
-            <p class="mb-2">Next steps:</p>
-            <ol class="text-gray-400 space-y-1">
-              <li>1. Start the bot: <code class="text-purple-400">npm start</code></li>
-              <li>2. Copy the 8-digit code from terminal</li>
-              <li>3. Enter it in WhatsApp → Linked Devices</li>
-            </ol>
-          </div>
-        `);
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-qrcode mr-2"></i>Get Pairing Code';
-      }, 1500);
+        if (connectionPollInterval) clearInterval(connectionPollInterval);
+      }, 120000);
     }
 
     function showResult(type, message) {

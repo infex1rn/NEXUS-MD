@@ -24,6 +24,7 @@ import {
 
 import { makeWASocketExtended, protoType, serialize } from './lib/simple.js'
 import FirebaseDB from './lib/firebase.js'
+import { createServer, pairingState } from './server.js'
 
 dotenv.config()
 
@@ -146,42 +147,61 @@ const connectionOptions = {
 global.conn = makeWASocketExtended(connectionOptions)
 conn.isInit = false
 
-// Handle pairing code
-if (!conn.authState.creds.registered) {
-  let phoneNumber
+// Function to request pairing code (used by both terminal and web interface)
+async function requestPairingCode(phoneNumber) {
+  const cleanNumber = phoneNumber.replace(/[^0-9]/g, '')
   
+  if (!cleanNumber || cleanNumber.length < 8) {
+    throw new Error('Invalid phone number format. Please include country code (Example: 1234567890)')
+  }
+  
+  try {
+    const code = await conn.requestPairingCode(cleanNumber)
+    const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code
+    
+    console.log(chalk.green('\n╔═══════════════════════════════════════╗'))
+    console.log(chalk.green('║         📲 PAIRING CODE               ║'))
+    console.log(chalk.green('╠═══════════════════════════════════════╣'))
+    console.log(chalk.green(`║     ${chalk.white.bold(formattedCode)}                  ║`))
+    console.log(chalk.green('╠═══════════════════════════════════════╣'))
+    console.log(chalk.green('║  1. Open WhatsApp on your phone       ║'))
+    console.log(chalk.green('║  2. Go to Settings > Linked Devices   ║'))
+    console.log(chalk.green('║  3. Tap "Link a Device"               ║'))
+    console.log(chalk.green('║  4. Enter the code above              ║'))
+    console.log(chalk.green('╚═══════════════════════════════════════╝\n'))
+    
+    return code
+  } catch (error) {
+    console.log(chalk.red("Failed to generate pairing code:"), error.message)
+    throw error
+  }
+}
+
+// Start web server for pairing and dashboard
+createServer(conn, requestPairingCode)
+
+// Handle pairing code from environment variable
+if (!conn.authState.creds.registered) {
   if (phoneNumberFromEnv) {
-    phoneNumber = phoneNumberFromEnv.replace(/[^0-9]/g, '')
+    const phoneNumber = phoneNumberFromEnv.replace(/[^0-9]/g, '')
     
     if (!phoneNumber || phoneNumber.length < 8) {
       console.log(chalk.red("Invalid phone number format. Please include country code (Example: 1234567890)"))
-      process.exit(0)
+      console.log(chalk.yellow("Or use the web interface to pair your device."))
+    } else {
+      // Request pairing code after connection is established
+      setTimeout(async () => {
+        try {
+          await requestPairingCode(phoneNumber)
+        } catch (error) {
+          console.log(chalk.red("Failed to generate pairing code:"), error.message)
+        }
+      }, 3000)
     }
   } else {
-    console.log(chalk.red("No phone number provided. Please set the PHONE_NUMBER environment variable."))
-    console.log(chalk.yellow("Example: PHONE_NUMBER=1234567890 npm start"))
-    process.exit(0)
+    console.log(chalk.yellow("\n[INFO] No phone number set in environment."))
+    console.log(chalk.cyan("📱 Use the web interface to pair your device!\n"))
   }
-
-  setTimeout(async () => {
-    try {
-      let code = await conn.requestPairingCode(phoneNumber)
-      code = code?.match(/.{1,4}/g)?.join('-') || code
-      
-      console.log(chalk.green('\n╔═══════════════════════════════════════╗'))
-      console.log(chalk.green('║         📲 PAIRING CODE               ║'))
-      console.log(chalk.green('╠═══════════════════════════════════════╣'))
-      console.log(chalk.green(`║     ${chalk.white.bold(code)}                  ║`))
-      console.log(chalk.green('╠═══════════════════════════════════════╣'))
-      console.log(chalk.green('║  1. Open WhatsApp on your phone       ║'))
-      console.log(chalk.green('║  2. Go to Settings > Linked Devices   ║'))
-      console.log(chalk.green('║  3. Tap "Link a Device"               ║'))
-      console.log(chalk.green('║  4. Enter the code above              ║'))
-      console.log(chalk.green('╚═══════════════════════════════════════╝\n'))
-    } catch (error) {
-      console.log(chalk.red("Failed to generate pairing code:"), error.message)
-    }
-  }, 3000)
 }
 
 console.log(chalk.yellow('\n[INFO] Waiting for connection...\n'))
@@ -215,6 +235,10 @@ async function connectionUpdate(update) {
     const { jid, name } = conn.user
     console.log(chalk.green(`\n[SUCCESS] Connected as ${name || jid}`))
     console.log(chalk.cyan('\n🤖 NEXUS-MD is now online!\n'))
+    
+    // Update pairing state for web interface
+    pairingState.status = 'connected'
+    pairingState.connectedUser = { jid, name }
     
     // Send welcome message
     try {
