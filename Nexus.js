@@ -18,7 +18,8 @@ import {
   useMultiFileAuthState,
   DisconnectReason,
   makeCacheableSignalKeyStore,
-  delay
+  delay,
+  fetchLatestBaileysVersion
 } from 'baileys-pro'
 
 import { makeWASocketExtended, protoType, serialize } from './lib/simple.js'
@@ -130,10 +131,18 @@ if (useFirebase) {
   saveCreds = fileAuth.saveCreds
 }
 
-// Use fixed version like GURU-Ai for better compatibility with pairing codes
-const version = [2, 3000, 1025091846]
-
-console.log(chalk.blue(`[INFO] Using Baileys version: ${version.join('.')}`))
+// Fetch the latest WhatsApp Web version dynamically to avoid 405 errors
+// WhatsApp frequently updates their protocol, causing hardcoded versions to fail
+let version
+try {
+  const versionInfo = await fetchLatestBaileysVersion()
+  version = versionInfo.version
+  console.log(chalk.blue(`[INFO] Using WhatsApp Web version: ${version.join('.')} (latest: ${versionInfo.isLatest})`))
+} catch (error) {
+  // Fallback version if fetch fails - this should be updated periodically
+  version = [2, 3000, 1015901307]
+  console.log(chalk.yellow(`[WARN] Failed to fetch latest version, using fallback: ${version.join('.')}`))
+}
 
 /**
  * Get browser configuration for pairing code compatibility
@@ -234,6 +243,10 @@ if (!conn.authState.creds.registered) {
 console.log(chalk.yellow('\n[INFO] Waiting for connection...\n'))
 
 // Connection update handler
+// Track reconnection attempts to prevent infinite loops
+let reconnectAttempts = 0
+const MAX_RECONNECT_ATTEMPTS = 5
+
 async function connectionUpdate(update) {
   const { connection, lastDisconnect, isNewLogin } = update
   global.stopped = connection
@@ -242,7 +255,29 @@ async function connectionUpdate(update) {
 
   const code = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.output?.payload?.statusCode
 
-  if (code && code !== DisconnectReason.loggedOut && conn?.ws?.socket == null) {
+  // Handle 405 error specifically - this means the WhatsApp version is outdated
+  // or there's a protocol mismatch. Don't attempt infinite reconnects.
+  if (code === 405) {
+    reconnectAttempts++
+    console.log(chalk.red(`\n[ERROR] Received 405 error (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`))
+    console.log(chalk.yellow('[INFO] This usually means WhatsApp protocol has been updated.'))
+    
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      console.log(chalk.red('[ERROR] Max reconnection attempts reached for 405 error.'))
+      console.log(chalk.yellow('[INFO] Please try the following:'))
+      console.log(chalk.yellow('  1. Update the bot to the latest version'))
+      console.log(chalk.yellow('  2. Clear auth_info folder and re-pair your device'))
+      console.log(chalk.yellow('  3. Restart the application'))
+      return // Stop trying to reconnect
+    }
+    
+    // Wait before retrying with exponential backoff
+    const waitTime = Math.min(30000, 5000 * reconnectAttempts)
+    console.log(chalk.yellow(`[INFO] Waiting ${waitTime / 1000}s before retry...`))
+    await delay(waitTime)
+  }
+
+  if (code && code !== DisconnectReason.loggedOut && code !== 405 && conn?.ws?.socket == null) {
     try {
       console.log(chalk.yellow('[INFO] Reconnecting...'))
       await global.reloadHandler(true)
@@ -259,6 +294,9 @@ async function connectionUpdate(update) {
   if (global.db.data == null) await loadDatabase()
 
   if (connection === 'open') {
+    // Reset reconnect attempts on successful connection
+    reconnectAttempts = 0
+    
     const { jid, name } = conn.user
     console.log(chalk.green(`\n[SUCCESS] Connected as ${name || jid}`))
     console.log(chalk.cyan('\n🤖 NEXUS-MD is now online!\n'))
