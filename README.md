@@ -176,7 +176,7 @@ FIREBASE_CLIENT_EMAIL=your-service-account@project.iam.gserviceaccount.com
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 ```
 
-### Link Your WhatsApp
+### Link Your WhatsApp (Web Interface)
 
 1. Start the bot with `npm start`
 2. Open the web dashboard at `http://localhost:3000` (or your deployed URL)

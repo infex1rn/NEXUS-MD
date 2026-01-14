@@ -178,7 +178,7 @@ async function requestPairingCode(phoneNumber) {
 // Start web server for pairing and dashboard
 createServer(conn, requestPairingCode)
 
-// Direct users to web interface for pairing
+// Only use web interface for pairing to avoid duplicate code generation conflicts
 if (!conn.authState.creds.registered) {
   console.log(chalk.cyan("\n📱 Use the web interface to pair your device!\n"))
 }
