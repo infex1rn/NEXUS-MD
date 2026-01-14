@@ -20,7 +20,7 @@ import {
   makeCacheableSignalKeyStore,
   delay,
   fetchLatestBaileysVersion
-} from 'baileys-pro'
+} from '@whiskeysockets/baileys'
 
 import { makeWASocketExtended, protoType, serialize } from './lib/simple.js'
 import FirebaseDB from './lib/firebase.js'
@@ -134,16 +134,26 @@ if (useFirebase) {
 // Fetch the latest WhatsApp Web version dynamically to avoid 405 errors
 // WhatsApp frequently updates their protocol, causing hardcoded versions to fail
 let version
-try {
-  const versionInfo = await fetchLatestBaileysVersion()
-  version = versionInfo.version
-  console.log(chalk.blue(`[INFO] Using WhatsApp Web version: ${version.join('.')} (latest: ${versionInfo.isLatest})`))
-} catch (error) {
-  // Fallback version if fetch fails - this should be updated periodically
-  // Last updated: January 2026 - Update this if 405 errors persist
-  version = [2, 3000, 1015901307]
-  console.log(chalk.yellow(`[WARN] Failed to fetch latest version, using fallback: ${version.join('.')}`))
+
+/**
+ * Fetch the latest WhatsApp Web version with retries and fallbacks
+ * @returns {Promise<Array>} Version array [major, minor, patch]
+ */
+async function getLatestVersion() {
+  try {
+    const versionInfo = await fetchLatestBaileysVersion()
+    console.log(chalk.blue(`[INFO] Using WhatsApp Web version: ${versionInfo.version.join('.')} (latest: ${versionInfo.isLatest})`))
+    return versionInfo.version
+  } catch (error) {
+    // Fallback: the official Baileys library auto-fetches version internally
+    // If explicit fetch fails, return null to let Baileys handle it
+    console.log(chalk.yellow(`[WARN] Failed to fetch latest version: ${error.message}`))
+    console.log(chalk.yellow('[INFO] Baileys will attempt to use its internal version handling'))
+    return null
+  }
 }
+
+version = await getLatestVersion()
 
 /**
  * Get browser configuration for pairing code compatibility
@@ -161,32 +171,34 @@ function getBrowserConfig() {
   return browserConfig
 }
 
-// Connection options
-const connectionOptions = {
-  version,
-  logger: pino({ level: 'fatal' }),
-  printQRInTerminal: false,
-  browser: getBrowserConfig(),
-  auth: {
-    creds: state.creds,
-    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' }))
-  },
-  markOnlineOnConnect: true,
-  generateHighQualityLinkPreview: true,
-  cachedGroupMetadata: async (jid) => {
-    const cached = groupMetadataCache.get(jid)
-    if (cached) return cached
-    return null
-  },
-  getMessage: async (key) => {
-    return { conversation: '' }
-  },
-  msgRetryCounterCache,
-  syncFullHistory: false
+// Function to create connection options with current version
+function getConnectionOptions() {
+  return {
+    ...(version && { version }), // Only include version if successfully fetched
+    logger: pino({ level: 'fatal' }),
+    printQRInTerminal: false,
+    browser: getBrowserConfig(),
+    auth: {
+      creds: state.creds,
+      keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' }))
+    },
+    markOnlineOnConnect: true,
+    generateHighQualityLinkPreview: true,
+    cachedGroupMetadata: async (jid) => {
+      const cached = groupMetadataCache.get(jid)
+      if (cached) return cached
+      return null
+    },
+    getMessage: async (key) => {
+      return { conversation: '' }
+    },
+    msgRetryCounterCache,
+    syncFullHistory: false
+  }
 }
 
 // Create socket
-global.conn = makeWASocketExtended(connectionOptions)
+global.conn = makeWASocketExtended(getConnectionOptions())
 conn.isInit = false
 
 // Function to request pairing code (used by both terminal and web interface)
@@ -266,19 +278,22 @@ async function connectionUpdate(update) {
     if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
       console.log(chalk.red('[ERROR] Max reconnection attempts reached for 405 error.'))
       console.log(chalk.yellow('[INFO] Please try the following:'))
-      console.log(chalk.yellow('  1. Update the bot to the latest version'))
+      console.log(chalk.yellow('  1. Run: npm update @whiskeysockets/baileys'))
       console.log(chalk.yellow('  2. Clear auth_info folder and re-pair your device'))
       console.log(chalk.yellow('  3. Restart the application'))
+      console.log(chalk.yellow('  4. Check https://github.com/WhiskeySockets/Baileys for updates'))
       return // Stop trying to reconnect
     }
     
     // Wait before retrying with exponential backoff
-    const waitTime = Math.min(30000, 5000 * reconnectAttempts)
+    const waitTime = Math.min(60000, 10000 * reconnectAttempts)
     console.log(chalk.yellow(`[INFO] Waiting ${waitTime / 1000}s before retry...`))
     await delay(waitTime)
     
-    // Attempt reconnection after backoff delay
+    // Re-fetch the latest version before reconnecting
     try {
+      console.log(chalk.yellow('[INFO] Fetching latest WhatsApp Web version...'))
+      version = await getLatestVersion()
       console.log(chalk.yellow('[INFO] Attempting reconnection after 405 error...'))
       await global.reloadHandler(true)
     } catch (error) {
@@ -353,7 +368,8 @@ global.reloadHandler = async function(restatConn) {
       global.conn.ws.close()
     } catch {}
     conn.ev.removeAllListeners()
-    global.conn = makeWASocketExtended(connectionOptions, { chats: oldChats })
+    // Use getConnectionOptions() to get fresh options with updated version
+    global.conn = makeWASocketExtended(getConnectionOptions(), { chats: oldChats })
     isInit = true
   }
   
