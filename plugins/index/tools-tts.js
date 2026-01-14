@@ -2,7 +2,7 @@
  * Tools Command: TTS (Text to Speech)
  * Convert text to voice note
  */
-import gTTS from 'gtts'
+import { Text2Speech } from 'better-node-gtts'
 import fs from 'fs'
 import path from 'path'
 
@@ -28,15 +28,11 @@ let handler = async (m, { conn, text, args, usedPrefix, command }) => {
     
     await m.reply('🔊 *Converting to speech...*')
     
-    const gtts = new gTTS(speechText, lang)
     const tmpPath = path.join(process.cwd(), 'tmp', `tts_${Date.now()}.mp3`)
     
-    await new Promise((resolve, reject) => {
-      gtts.save(tmpPath, (err) => {
-        if (err) reject(err)
-        else resolve()
-      })
-    })
+    // Create Text2Speech instance with the specified language
+    const tts = new Text2Speech(lang)
+    await tts.save(tmpPath, speechText)
     
     await conn.sendMessage(m.chat, {
       audio: fs.readFileSync(tmpPath),
