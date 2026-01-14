@@ -11,12 +11,14 @@ A powerful, modular, and high-performance WhatsApp Bot built with [@whiskeysocke
 
 ## ✨ Features
 
-- 🔗 **Pairing Code System** - Link your WhatsApp via terminal (no QR scanning needed)
+- 🔗 **Pairing Code System** - Link your WhatsApp via terminal or web interface (no QR scanning needed)
+- 🌐 **Web Dashboard** - Beautiful web interface for pairing and bot management
 - 🔌 **70+ Modular Commands** - Easily extendable plugin system
 - 🔥 **Firebase Integration** - Persistent data storage with Firestore
 - 📱 **Multi-Device Support** - Works with WhatsApp Web Multi-Device
 - 🚀 **High Performance** - Optimized for speed and reliability
 - 🐳 **Docker Ready** - Easy deployment with Docker
+- ☁️ **Render Ready** - One-click deployment on Render
 - ⚡ **Auto-Reload Plugins** - Hot reload plugins without restart
 
 ## 📦 Complete Command List (70+ Commands)
@@ -176,10 +178,22 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY----
 ```
 
 ### Link Your WhatsApp
+
+#### Option 1: Web Interface (Recommended for Render/Cloud)
 1. Start the bot with `npm start`
-2. You'll receive a pairing code in the terminal
-3. Open WhatsApp → Settings → Linked Devices → Link a Device
-4. Enter the pairing code
+2. Open the web dashboard at `http://localhost:3000` (or your deployed URL)
+3. Go to the "Pair Device" section
+4. Enter your phone number (with country code)
+5. Click "Get Pairing Code"
+6. Open WhatsApp → Settings → Linked Devices → Link a Device
+7. Enter the pairing code shown on the web page
+
+#### Option 2: Terminal/Environment Variable
+1. Set `PHONE_NUMBER` in your `.env` file
+2. Start the bot with `npm start`
+3. You'll receive a pairing code in the terminal
+4. Open WhatsApp → Settings → Linked Devices → Link a Device
+5. Enter the pairing code
 
 ## 🔥 Firebase Setup
 
@@ -199,25 +213,45 @@ docker build -t nexus-md .
 docker run -d --name nexus-md \
   -e PHONE_NUMBER=1234567890 \
   -e FIREBASE_PROJECT_ID=your-project-id \
+  -p 3000:3000 \
   nexus-md
 ```
+
+## ☁️ Render Deployment
+
+1. Fork this repository
+2. Create a new Web Service on [Render](https://render.com)
+3. Connect your forked repository
+4. Set the following environment variables:
+   - `FIREBASE_PROJECT_ID` - Your Firebase project ID
+   - `FIREBASE_CLIENT_EMAIL` - Firebase service account email
+   - `FIREBASE_PRIVATE_KEY` - Firebase private key (with newlines)
+   - `BOTNAME` - Your bot name (optional)
+5. Deploy and wait for the build to complete
+6. Open your Render URL and use the web interface to pair your device
+
+**Note:** You don't need to set `PHONE_NUMBER` in environment variables when using the web interface for pairing.
 
 ## 📁 Project Structure
 
 ```
 NEXUS-MD/
 ├── Nexus.js           # Main bot entry point
+├── server.js          # Web server for dashboard & pairing API
 ├── handler.js         # Message handler
 ├── config.js          # Bot configuration
 ├── lib/
 │   ├── simple.js      # Extended WASocket
-│   ├── firebase.js    # Firebase database
+│   ├── firebase.js    # Firebase Firestore database
 │   └── sticker.js     # Sticker utilities
+├── web/
+│   └── public/        # Static web assets
 ├── plugins/
 │   └── index/         # 70+ Command plugins
 ├── test.js            # Test suite
 ├── package.json
 ├── Dockerfile
+├── render.yaml        # Render deployment config
 └── .env.example
 ```
 
