@@ -137,7 +137,7 @@ let version
 
 /**
  * Fetch the latest WhatsApp Web version with retries and fallbacks
- * @returns {Promise<Array>} Version array [major, minor, patch]
+ * @returns {Promise<Array<number>|null>} Version array [major, minor, patch] or null if fetch fails
  */
 async function getLatestVersion() {
   try {
