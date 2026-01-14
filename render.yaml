@@ -15,9 +15,6 @@ services:
         value: production
       - key: PORT
         value: 3000
-      - key: PHONE_NUMBER
-        sync: false
-        # Optional: Set this to auto-pair on startup, or leave empty to use web interface
       - key: OWNERS
         sync: false
       - key: BOTNAME

@@ -11,7 +11,7 @@ A powerful, modular, and high-performance WhatsApp Bot built with [@whiskeysocke
 
 ## ✨ Features
 
-- 🔗 **Pairing Code System** - Link your WhatsApp via terminal or web interface (no QR scanning needed)
+- 🔗 **Pairing Code System** - Link your WhatsApp via web interface (no QR scanning needed)
 - 🌐 **Web Dashboard** - Beautiful web interface for pairing and bot management
 - 🔌 **70+ Modular Commands** - Easily extendable plugin system
 - 🔥 **Firebase Integration** - Persistent data storage with Firestore
@@ -168,7 +168,6 @@ npm start
 
 ### Configuration (.env)
 ```env
-PHONE_NUMBER=1234567890
 OWNERS=1234567890;YourName
 
 # Firebase (optional)
@@ -177,9 +176,8 @@ FIREBASE_CLIENT_EMAIL=your-service-account@project.iam.gserviceaccount.com
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 ```
 
-### Link Your WhatsApp
+### Link Your WhatsApp (Web Interface)
 
-#### Option 1: Web Interface (Recommended for Render/Cloud)
 1. Start the bot with `npm start`
 2. Open the web dashboard at `http://localhost:3000` (or your deployed URL)
 3. Go to the "Pair Device" section
@@ -187,13 +185,6 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY----
 5. Click "Get Pairing Code"
 6. Open WhatsApp → Settings → Linked Devices → Link a Device
 7. Enter the pairing code shown on the web page
-
-#### Option 2: Terminal/Environment Variable
-1. Set `PHONE_NUMBER` in your `.env` file
-2. Start the bot with `npm start`
-3. You'll receive a pairing code in the terminal
-4. Open WhatsApp → Settings → Linked Devices → Link a Device
-5. Enter the pairing code
 
 ## 🔥 Firebase Setup
 
@@ -211,11 +202,12 @@ docker build -t nexus-md .
 
 # Run the container
 docker run -d --name nexus-md \
-  -e PHONE_NUMBER=1234567890 \
   -e FIREBASE_PROJECT_ID=your-project-id \
   -p 3000:3000 \
   nexus-md
 ```
+
+After starting the container, open `http://localhost:3000` and use the web interface to pair your device.
 
 ## ☁️ Render Deployment
 
@@ -229,8 +221,6 @@ docker run -d --name nexus-md \
    - `BOTNAME` - Your bot name (optional)
 5. Deploy and wait for the build to complete
 6. Open your Render URL and use the web interface to pair your device
-
-**Note:** You don't need to set `PHONE_NUMBER` in environment variables when using the web interface for pairing.
 
 ## 📁 Project Structure
 
