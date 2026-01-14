@@ -216,7 +216,7 @@ async function handleAPI(req, res, pathname, conn, requestPairingCode) {
               'Tap "Link a Device"',
               `Enter the code: ${formattedCode}`
             ],
-            expiresIn: '60 seconds'
+            expiresIn: '120 seconds'
           })
         } else {
           pairingState.status = 'error'
@@ -549,7 +549,7 @@ function getDashboardHTML() {
           <div class="bg-gradient-to-r from-purple-900/50 to-pink-900/50 rounded-2xl p-8 text-center pulse-glow">
             <p class="text-gray-400 mb-2">Your Pairing Code</p>
             <div class="pairing-code text-white font-bold" id="pairingCodeText">----</div>
-            <p class="text-sm text-gray-400 mt-4"><i class="fas fa-clock mr-1"></i>Code expires in <span id="countdown">60</span> seconds</p>
+            <p class="text-sm text-gray-400 mt-4"><i class="fas fa-clock mr-1"></i>Code expires in <span id="countdown">120</span> seconds</p>
           </div>
           
           <div class="mt-6 space-y-3">
@@ -701,7 +701,7 @@ function getDashboardHTML() {
       document.getElementById('pairingResult').classList.add('hidden');
       
       // Start countdown
-      let seconds = 60;
+      let seconds = 120;
       const countdownEl = document.getElementById('countdown');
       
       if (countdownInterval) clearInterval(countdownInterval);
