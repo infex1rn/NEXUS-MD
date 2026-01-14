@@ -17,11 +17,9 @@ import { format } from 'util'
 import {
   useMultiFileAuthState,
   DisconnectReason,
-  fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
-  Browsers,
   delay
-} from '@whiskeysockets/baileys'
+} from 'baileys-pro'
 
 import { makeWASocketExtended, protoType, serialize } from './lib/simple.js'
 import FirebaseDB from './lib/firebase.js'
@@ -114,7 +112,9 @@ printBanner()
 
 // Auth state
 const { state, saveCreds } = await useMultiFileAuthState('./auth_info')
-const { version } = await fetchLatestBaileysVersion()
+
+// Use fixed version like GURU-Ai for better compatibility with pairing codes
+const version = [2, 3000, 1025091846]
 
 console.log(chalk.blue(`[INFO] Using Baileys version: ${version.join('.')}`))
 
@@ -183,8 +183,8 @@ async function requestPairingCode(phoneNumber) {
     
     // Pass a session identifier to requestPairingCode for better pairing reliability
     // The second parameter is an optional session name/identifier
-    const botName = process.env.BOTNAME || 'NEXUS-MD'
-    const sessionId = botName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8).toUpperCase()
+    // Using global.botname which is defined in config.js
+    const sessionId = (global.botname || 'NEXUSMD').replace(/[^a-zA-Z0-9]/g, '').substring(0, 8).toUpperCase()
     const code = await conn.requestPairingCode(cleanNumber, sessionId)
     const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code
     
