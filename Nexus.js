@@ -172,9 +172,10 @@ function getBrowserConfig() {
 }
 
 // Function to create connection options with current version
+// Note: This function references the module-level 'version' variable, so updates
+// to 'version' before calling this function will be reflected in the options
 function getConnectionOptions() {
-  return {
-    ...(version && { version }), // Only include version if successfully fetched
+  const options = {
     logger: pino({ level: 'fatal' }),
     printQRInTerminal: false,
     browser: getBrowserConfig(),
@@ -195,6 +196,13 @@ function getConnectionOptions() {
     msgRetryCounterCache,
     syncFullHistory: false
   }
+  
+  // Only include version if successfully fetched, otherwise let Baileys auto-detect
+  if (version) {
+    options.version = version
+  }
+  
+  return options
 }
 
 // Create socket
