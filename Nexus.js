@@ -17,14 +17,13 @@ import { format } from 'util'
 import {
   useMultiFileAuthState,
   DisconnectReason,
-  fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
-  Browsers,
   delay
-} from '@whiskeysockets/baileys'
+} from 'baileys-pro'
 
 import { makeWASocketExtended, protoType, serialize } from './lib/simple.js'
 import FirebaseDB from './lib/firebase.js'
+import { useFirebaseAuthState } from './lib/auth/firebase-auth.js'
 import { createServer, pairingState } from './server.js'
 
 dotenv.config()
@@ -112,25 +111,42 @@ function printBanner() {
 
 printBanner()
 
-// Auth state
-const { state, saveCreds } = await useMultiFileAuthState('./auth_info')
-const { version } = await fetchLatestBaileysVersion()
+// Auth state - Use Firebase for session storage if available, fallback to file-based
+let state, saveCreds
+
+// Check if Firebase is configured
+const useFirebase = process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY
+
+if (useFirebase) {
+  console.log(chalk.blue('[INFO] Using Firebase for session storage'))
+  const firebaseAuth = await useFirebaseAuthState()
+  state = firebaseAuth.state
+  saveCreds = firebaseAuth.saveCreds
+} else {
+  console.log(chalk.yellow('[INFO] Firebase not configured, using file-based session storage'))
+  console.log(chalk.yellow('[INFO] Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY for cloud session storage'))
+  const fileAuth = await useMultiFileAuthState('./auth_info')
+  state = fileAuth.state
+  saveCreds = fileAuth.saveCreds
+}
+
+// Use fixed version like GURU-Ai for better compatibility with pairing codes
+const version = [2, 3000, 1025091846]
 
 console.log(chalk.blue(`[INFO] Using Baileys version: ${version.join('.')}`))
 
 /**
  * Get browser configuration for pairing code compatibility
- * Uses Chrome on Linux format which is the most reliable for pairing codes
+ * Uses Ubuntu Chrome format which is proven to work with pairing codes
+ * Based on working implementations from GURU-Ai and other WhatsApp bot projects
  * @returns {Array} Browser configuration array for Baileys
  */
 function getBrowserConfig() {
-  const botName = process.env.BOTNAME || 'NEXUS-MD'
+  // Use Ubuntu Chrome format - this is proven to work with pairing codes
+  // Format: [platform, browser, version] matching GURU-Ai's working configuration
+  const browserConfig = ['Ubuntu', 'Chrome', '20.0.04']
   
-  // Use Chrome on Linux format - this is the most reliable for pairing codes
-  // Based on working implementations from other WhatsApp bot projects
-  const browserConfig = ['Chrome (Linux)', '', '']
-  
-  console.log(chalk.blue(`[INFO] Browser platform: Chrome (Linux)`))
+  console.log(chalk.blue(`[INFO] Browser platform: Ubuntu Chrome 20.0.04`))
   
   return browserConfig
 }
@@ -179,9 +195,14 @@ async function requestPairingCode(phoneNumber) {
   try {
     // Wait for socket to be ready before requesting pairing code
     // This delay is critical for the pairing code to work properly
-    await delay(2000)
+    // Using 3000ms based on GURU-Ai's working implementation
+    await delay(3000)
     
-    const code = await conn.requestPairingCode(cleanNumber)
+    // Pass a session identifier to requestPairingCode for better pairing reliability
+    // The second parameter is an optional session name/identifier
+    // Using global.botname which is defined in config.js
+    const sessionId = (global.botname || 'NEXUSMD').replace(/[^a-zA-Z0-9]/g, '').substring(0, 8).toUpperCase()
+    const code = await conn.requestPairingCode(cleanNumber, sessionId)
     const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code
     
     console.log(chalk.green('\n╔═══════════════════════════════════════╗'))
