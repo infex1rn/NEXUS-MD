@@ -140,6 +140,7 @@ try {
   console.log(chalk.blue(`[INFO] Using WhatsApp Web version: ${version.join('.')} (latest: ${versionInfo.isLatest})`))
 } catch (error) {
   // Fallback version if fetch fails - this should be updated periodically
+  // Last updated: January 2026 - Update this if 405 errors persist
   version = [2, 3000, 1015901307]
   console.log(chalk.yellow(`[WARN] Failed to fetch latest version, using fallback: ${version.join('.')}`))
 }
@@ -275,6 +276,15 @@ async function connectionUpdate(update) {
     const waitTime = Math.min(30000, 5000 * reconnectAttempts)
     console.log(chalk.yellow(`[INFO] Waiting ${waitTime / 1000}s before retry...`))
     await delay(waitTime)
+    
+    // Attempt reconnection after backoff delay
+    try {
+      console.log(chalk.yellow('[INFO] Attempting reconnection after 405 error...'))
+      await global.reloadHandler(true)
+    } catch (error) {
+      console.error('Error reconnecting after 405:', error)
+    }
+    return // Exit after handling 405 to avoid duplicate reconnection attempts
   }
 
   if (code && code !== DisconnectReason.loggedOut && code !== 405 && conn?.ws?.socket == null) {
