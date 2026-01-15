@@ -228,11 +228,7 @@ async function requestPairingCode(phoneNumber) {
     // Using 3000ms based on GURU-Ai's working implementation
     await delay(3000)
     
-    // Pass a session identifier to requestPairingCode for better pairing reliability
-    // The second parameter is an optional session name/identifier
-    // Using global.botname which is defined in config.js
-    const sessionId = (global.botname || 'NEXUSMD').replace(/[^a-zA-Z0-9]/g, '').substring(0, 8).toUpperCase()
-    const code = await conn.requestPairingCode(cleanNumber, sessionId)
+    const code = await conn.requestPairingCode(cleanNumber)
     const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code
     
     console.log(chalk.green('\n╔═══════════════════════════════════════╗'))

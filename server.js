@@ -659,7 +659,7 @@ function getDashboardHTML() {
         return;
       }
       
-      if (!/^\\d{10,15}$/.test(phone.replace(/\\D/g, ''))) {
+      if (!/^\d{10,15}$/.test(phone.replace(/\D/g, ''))) {
         showResult('error', 'Invalid phone number format. Use 10-15 digits with country code.');
         return;
       }
@@ -679,7 +679,8 @@ function getDashboardHTML() {
         if (data.success) {
           if (data.alreadyConnected) {
             showConnectedBanner(data.user);
-          } else if (data.pairingCode) {
+          }
+          if (data.pairingCode) {
             showPairingCode(data.pairingCode);
             startStatusPolling();
           }
@@ -687,6 +688,7 @@ function getDashboardHTML() {
           showResult('error', data.error || 'Failed to generate pairing code');
         }
       } catch (e) {
+        console.error('Error in pairing code request:', e);
         showResult('error', 'Network error. Please try again.');
       }
       
