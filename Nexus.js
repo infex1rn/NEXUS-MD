@@ -416,7 +416,7 @@ global.reloadHandler = async function(restatConn) {
 let isInit = true
 
 // Load plugins
-const pluginFolder = global.__dirname(join(__dirname_current, './plugins/index'))
+const pluginFolder = join(__dirname_current, 'plugins/index')
 const pluginFilter = filename => /\.js$/.test(filename)
 global.plugins = {}
 
