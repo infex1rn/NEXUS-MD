@@ -2,7 +2,7 @@ process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '1'
 import './config.js'
 
 import dotenv from 'dotenv'
-import { existsSync, readFileSync, readdirSync, watch } from 'fs'
+import { existsSync, readFileSync, readdirSync, watch, rmSync } from 'fs'
 import { createRequire } from 'module'
 import path, { join } from 'path'
 import { platform } from 'process'
@@ -24,7 +24,7 @@ import {
 
 import { makeWASocketExtended, protoType, serialize } from './lib/simple.js'
 import FirebaseDB from './lib/firebase.js'
-import { useFirebaseAuthState } from './lib/auth/firebase-auth.js'
+import { useFirebaseAuthState, clearFirebaseAuthState } from './lib/auth/firebase-auth.js'
 import { createServer, pairingState } from './server.js'
 
 dotenv.config()
@@ -280,12 +280,24 @@ async function connectionUpdate(update) {
     console.log(chalk.yellow('[INFO] This usually means WhatsApp protocol has been updated.'))
     
     if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      console.log(chalk.red('[ERROR] Max reconnection attempts reached for 405 error.'))
-      console.log(chalk.yellow('[INFO] Please try the following:'))
-      console.log(chalk.yellow('  1. Run: npm update @whiskeysockets/baileys'))
-      console.log(chalk.yellow('  2. Clear auth_info folder and re-pair your device'))
-      console.log(chalk.yellow('  3. Restart the application'))
-      console.log(chalk.yellow('  4. Check https://github.com/WhiskeySockets/Baileys for updates'))
+      console.log(chalk.red('\n╔══════════════════════════════════════════════════════════╗'))
+      console.log(chalk.red('║                🚨 CRITICAL SESSION ERROR                 ║'))
+      console.log(chalk.red('╠══════════════════════════════════════════════════════════╣'))
+      console.log(chalk.red('║ Max reconnection attempts reached. Your session may be   ║'))
+      console.log(chalk.red('║ invalid or the WhatsApp protocol has been updated.       ║'))
+      console.log(chalk.red('╚══════════════════════════════════════════════════════════╝\n'))
+
+      console.log(chalk.yellow('[INFO] Automatically clearing invalid session...'))
+      if (useFirebase) {
+        await clearFirebaseAuthState()
+      } else {
+        try { rmSync('./auth_info', { recursive: true, force: true }) } catch (e) {}
+      }
+
+      console.log(chalk.green('[SUCCESS] Invalid session cleared successfully.'))
+      console.log(chalk.cyan('\n[ACTION REQUIRED] Please:'))
+      console.log(chalk.cyan('  1. Restart the bot'))
+      console.log(chalk.cyan('  2. Re-pair your device using the web dashboard'))
       return // Stop trying to reconnect
     }
     
@@ -347,7 +359,20 @@ async function connectionUpdate(update) {
     console.log(chalk.red(`\n[DISCONNECTED] Connection closed. Reason: ${code}`))
     
     if (code === DisconnectReason.loggedOut) {
-      console.log(chalk.red('[INFO] Logged out. Please delete auth_info folder and restart.'))
+      console.log(chalk.red('\n╔══════════════════════════════════════════════════════════╗'))
+      console.log(chalk.red('║                 ⚠️  LOGGED OUT DETECTED                  ║'))
+      console.log(chalk.red('╚══════════════════════════════════════════════════════════╝\n'))
+
+      console.log(chalk.yellow(`[INFO] Automatically clearing session from ${useFirebase ? 'Firebase database' : 'local storage'}...`))
+
+      if (useFirebase) {
+        await clearFirebaseAuthState()
+      } else {
+        try { rmSync('./auth_info', { recursive: true, force: true }) } catch (e) {}
+      }
+
+      console.log(chalk.green('[SUCCESS] Session storage has been wiped clean.'))
+      console.log(chalk.cyan('\n[ACTION REQUIRED] Please restart the bot and re-pair your device.'))
     }
   }
 }
