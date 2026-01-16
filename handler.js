@@ -20,7 +20,7 @@ export async function handler(chatUpdate) {
   
   if (global.db.data == null) await global.loadDatabase()
   
-  let settings = global.db?.data?.settings?.[this.user?.jid] || {}
+  let settings = global.db?.data?.settings?.[this.decodeJid(this.user?.id)] || {}
   
   try {
     m = smsg(this, m) || m
@@ -85,14 +85,15 @@ export async function handler(chatUpdate) {
       }
       
       // Initialize settings
-      settings = global.db.data.settings[this.user.jid]
-      if (typeof settings !== 'object') global.db.data.settings[this.user.jid] = {}
+      const botJid = this.decodeJid(this.user?.id)
+      settings = global.db.data.settings[botJid]
+      if (typeof settings !== 'object') global.db.data.settings[botJid] = {}
       if (settings) {
         if (!('self' in settings)) settings.self = false
         if (!('autoread' in settings)) settings.autoread = false
         if (!('restrict' in settings)) settings.restrict = false
       } else {
-        global.db.data.settings[this.user.jid] = {
+        global.db.data.settings[botJid] = {
           self: false,
           autoread: false,
           restrict: false,
@@ -119,7 +120,7 @@ export async function handler(chatUpdate) {
 
     // Private mode check
     if (process.env.MODE && process.env.MODE.toLowerCase() === 'private' && !(isROwner || isOwner)) return
-    if (m.isBaileys) return
+    if (m.isBaileys && !isOwner) return
 
     // Group/participant context
     let usedPrefix
@@ -128,13 +129,13 @@ export async function handler(chatUpdate) {
       : {}) || {}
     const participants = (m.isGroup ? groupMetadata.participants : []) || []
     const user = (m.isGroup ? participants.find(u => conn.decodeJid(u.id) === m.sender) : {}) || {}
-    const bot = (m.isGroup ? participants.find(u => conn.decodeJid(u.id) == conn.user.jid) : {}) || {}
+    const bot = (m.isGroup ? participants.find(u => conn.decodeJid(u.id) == this.decodeJid(this.user?.id)) : {}) || {}
     const isRAdmin = user?.admin == 'superadmin' || false
     const isAdmin = isRAdmin || user?.admin == 'admin' || false
     const isBotAdmin = bot?.admin || false
 
     // Plugin execution
-    const ___dirname = path.join(path.dirname(fileURLToPath(import.meta.url)), './plugins')
+    const ___dirname = path.join(path.dirname(fileURLToPath(import.meta.url)), './plugins/index')
     
     for (let name in global.plugins) {
       let plugin = global.plugins[name]
@@ -164,13 +165,13 @@ export async function handler(chatUpdate) {
           ? [[_prefix.exec(m.text), _prefix]]
           : Array.isArray(_prefix)
             ? _prefix.map(p => {
-                let re = p instanceof RegExp ? p : new RegExp(str2Regex(p))
+                let re = p instanceof RegExp ? p : new RegExp('^' + str2Regex(p))
                 return [re.exec(m.text), re]
               })
             : typeof _prefix === 'string'
-              ? [[new RegExp(str2Regex(_prefix)).exec(m.text), new RegExp(str2Regex(_prefix))]]
+              ? [[new RegExp('^' + str2Regex(_prefix)).exec(m.text), new RegExp('^' + str2Regex(_prefix))]]
               : [[[], new RegExp()]]
-      ).find(p => p[1])
+      ).find(p => p[0])
       
       // Execute 'before' function if exists
       if (typeof plugin.before === 'function') {
@@ -197,7 +198,7 @@ export async function handler(chatUpdate) {
       
       if (typeof plugin !== 'function') continue
       
-      if ((usedPrefix = (match[0] || '')[0])) {
+      if (match && (usedPrefix = (match[0] || [''])[0]) !== undefined) {
         let noPrefix = m.text.replace(usedPrefix, '')
         let [command, ...args] = noPrefix.trim().split` `.filter(v => v)
         args = args || []
