@@ -219,31 +219,53 @@ async function requestPairingCode(phoneNumber) {
   }
   
   // Check if already registered
-  if (conn.authState?.creds?.registered) {
+  if (global.conn?.authState?.creds?.registered) {
     throw new Error('Device is already registered. Please unlink first.')
+  }
+
+  // Helper to check if connection is active
+  const isConnectionActive = () => {
+    return global.conn && global.conn.ws && (global.conn.ws.readyState === 1 || global.conn.ws.readyState === 0)
   }
   
   try {
-    // Wait for socket to be ready before requesting pairing code
-    // This delay is critical for the pairing code to work properly
-    // Using 3000ms based on GURU-Ai's working implementation
-    await delay(3000)
+    // Ensure connection is active before requesting code
+    if (!isConnectionActive()) {
+      console.log(chalk.yellow('[INFO] Connection inactive, re-initializing before requesting pairing code...'))
+      await global.reloadHandler(true)
+      await delay(5000) // Wait longer for socket to initialize
+    } else {
+      // Short delay for existing connection
+      await delay(3000)
+    }
     
-    const code = await conn.requestPairingCode(cleanNumber)
-    const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code
-    
-    console.log(chalk.green('\n╔═══════════════════════════════════════╗'))
-    console.log(chalk.green('║         📲 PAIRING CODE               ║'))
-    console.log(chalk.green('╠═══════════════════════════════════════╣'))
-    console.log(chalk.green(`║     ${chalk.white.bold(formattedCode)}                  ║`))
-    console.log(chalk.green('╠═══════════════════════════════════════╣'))
-    console.log(chalk.green('║  1. Open WhatsApp on your phone       ║'))
-    console.log(chalk.green('║  2. Go to Settings > Linked Devices   ║'))
-    console.log(chalk.green('║  3. Tap "Link a Device"               ║'))
-    console.log(chalk.green('║  4. Enter the code above              ║'))
-    console.log(chalk.green('╚═══════════════════════════════════════╝\n'))
-    
-    return code
+    try {
+      const code = await global.conn.requestPairingCode(cleanNumber)
+      const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code
+
+      console.log(chalk.green('\n╔═══════════════════════════════════════╗'))
+      console.log(chalk.green('║         📲 PAIRING CODE               ║'))
+      console.log(chalk.green('╠═══════════════════════════════════════╣'))
+      console.log(chalk.green(`║     ${chalk.white.bold(formattedCode)}                  ║`))
+      console.log(chalk.green('╠═══════════════════════════════════════╣'))
+      console.log(chalk.green('║  1. Open WhatsApp on your phone       ║'))
+      console.log(chalk.green('║  2. Go to Settings > Linked Devices   ║'))
+      console.log(chalk.green('║  3. Tap "Link a Device"               ║'))
+      console.log(chalk.green('║  4. Enter the code above              ║'))
+      console.log(chalk.green('╚═══════════════════════════════════════╝\n'))
+
+      return code
+    } catch (innerError) {
+      // If it failed with "Connection Closed", try one more time after a full reload
+      if (innerError.message.includes('Closed')) {
+        console.log(chalk.yellow('[INFO] Connection closed during request, retrying after reload...'))
+        await global.reloadHandler(true)
+        await delay(5000)
+        const code = await global.conn.requestPairingCode(cleanNumber)
+        return code
+      }
+      throw innerError
+    }
   } catch (error) {
     console.log(chalk.red("Failed to generate pairing code:"), error.message)
     throw error
@@ -337,43 +359,7 @@ async function connectionUpdate(update) {
     return // Exit after handling 405 to avoid duplicate reconnection attempts
   }
 
-  if (code && code !== DisconnectReason.loggedOut && code !== 405 && conn?.ws?.socket == null) {
-    try {
-      console.log(chalk.yellow('[INFO] Reconnecting...'))
-      await global.reloadHandler(true)
-    } catch (error) {
-      console.error('Error reloading handler:', error)
-    }
-  }
-
-  if (code && (code === DisconnectReason.restartRequired || code === 428)) {
-    console.log(chalk.yellow('\n[INFO] Restart Required...'))
-    await global.reloadHandler(true)
-  }
-
-  if (global.db.data == null) await loadDatabase()
-
-  if (connection === 'open') {
-    // Reset reconnect attempts on successful connection
-    reconnectAttempts = 0
-    
-    const { jid, name } = conn.user
-    console.log(chalk.green(`\n[SUCCESS] Connected as ${name || jid}`))
-    console.log(chalk.cyan('\n🤖 NEXUS-MD is now online!\n'))
-    
-    // Update pairing state for web interface
-    pairingState.status = 'connected'
-    pairingState.connectedUser = { jid, name }
-    
-    // Send welcome message
-    try {
-      const welcomeMsg = `*🤖 NEXUS-MD BOT ONLINE*\n\nHello ${name || 'there'}! Your bot is now connected.\n\nType *.menu* to see available commands.`
-      await conn.sendMessage(jid, { text: welcomeMsg })
-    } catch (e) {
-      console.error('Error sending welcome message:', e)
-    }
-  }
-
+  // Reconnect if connection is closed and it's not a logout or 405
   if (connection === 'close') {
     console.log(chalk.red(`\n[DISCONNECTED] Connection closed. Reason: ${code}`))
     
@@ -410,8 +396,39 @@ async function connectionUpdate(update) {
         console.log(chalk.yellow('[INFO] Restarting process...'))
         process.exit(0)
       }, 3000)
+    } else if (code !== 405) {
+      try {
+        console.log(chalk.yellow('[INFO] Reconnecting...'))
+        await global.reloadHandler(true)
+      } catch (error) {
+        console.error('Error reloading handler:', error)
+      }
     }
   }
+
+  if (global.db.data == null) await loadDatabase()
+
+  if (connection === 'open') {
+    // Reset reconnect attempts on successful connection
+    reconnectAttempts = 0
+
+    const { jid, name } = conn.user
+    console.log(chalk.green(`\n[SUCCESS] Connected as ${name || jid}`))
+    console.log(chalk.cyan('\n🤖 NEXUS-MD is now online!\n'))
+
+    // Update pairing state for web interface
+    pairingState.status = 'connected'
+    pairingState.connectedUser = { jid, name }
+
+    // Send welcome message
+    try {
+      const welcomeMsg = `*🤖 NEXUS-MD BOT ONLINE*\n\nHello ${name || 'there'}! Your bot is now connected.\n\nType *.menu* to see available commands.`
+      await conn.sendMessage(jid, { text: welcomeMsg })
+    } catch (e) {
+      console.error('Error sending welcome message:', e)
+    }
+  }
+
 }
 
 // Credentials update handler
