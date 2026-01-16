@@ -95,7 +95,7 @@ export function createServer(conn, requestPairingCode) {
 
     // API Routes
     if (pathname.startsWith('/api/')) {
-      return handleAPI(req, res, pathname, conn, requestPairingCode)
+      return handleAPI(req, res, pathname, requestPairingCode)
     }
 
     // Health check for Render
@@ -122,7 +122,8 @@ export function createServer(conn, requestPairingCode) {
 /**
  * Handle API requests
  */
-async function handleAPI(req, res, pathname, conn, requestPairingCode) {
+async function handleAPI(req, res, pathname, requestPairingCode) {
+  const conn = global.conn
   // Health check
   if (pathname === '/api/health') {
     return sendJSON(res, { 
@@ -240,10 +241,10 @@ async function handleAPI(req, res, pathname, conn, requestPairingCode) {
       pairingCode: pairingState.pairingCode,
       phoneNumber: pairingState.phoneNumber,
       error: pairingState.error,
-      connected: conn?.user?.jid ? true : false,
-      user: conn?.user?.jid ? {
-        jid: conn.user.jid,
-        name: conn.user.name || 'Unknown'
+      connected: global.conn?.user?.jid ? true : false,
+      user: global.conn?.user?.jid ? {
+        jid: global.conn.user.jid,
+        name: global.conn.user.name || 'Unknown'
       } : null
     })
   }
