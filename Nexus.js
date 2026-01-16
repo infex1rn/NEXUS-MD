@@ -19,7 +19,8 @@ import {
   DisconnectReason,
   makeCacheableSignalKeyStore,
   delay,
-  fetchLatestBaileysVersion
+  fetchLatestBaileysVersion,
+  initAuthCreds
 } from '@whiskeysockets/baileys'
 
 import { makeWASocketExtended, protoType, serialize } from './lib/simple.js'
@@ -294,10 +295,28 @@ async function connectionUpdate(update) {
         try { rmSync('./auth_info', { recursive: true, force: true }) } catch (e) {}
       }
 
+      // Clear in-memory state to prevent stale "connected" status
+      if (state && state.creds) {
+        state.creds = initAuthCreds()
+      }
+      if (global.conn && global.conn.authState) {
+        global.conn.authState.creds = state.creds
+      }
+
+      // Update pairing state for web UI
+      pairingState.status = 'idle'
+      pairingState.connectedUser = null
+
       console.log(chalk.green('[SUCCESS] Invalid session cleared successfully.'))
       console.log(chalk.cyan('\n[ACTION REQUIRED] Please:'))
       console.log(chalk.cyan('  1. Restart the bot'))
       console.log(chalk.cyan('  2. Re-pair your device using the web dashboard'))
+
+      // Force exit for clean restart (Render/Docker will auto-restart)
+      setTimeout(() => {
+        console.log(chalk.yellow('[INFO] Restarting process...'))
+        process.exit(0)
+      }, 3000)
       return // Stop trying to reconnect
     }
     
@@ -371,8 +390,26 @@ async function connectionUpdate(update) {
         try { rmSync('./auth_info', { recursive: true, force: true }) } catch (e) {}
       }
 
+      // Clear in-memory state to prevent stale "connected" status
+      if (state && state.creds) {
+        state.creds = initAuthCreds()
+      }
+      if (global.conn && global.conn.authState) {
+        global.conn.authState.creds = state.creds
+      }
+
+      // Update pairing state for web UI
+      pairingState.status = 'idle'
+      pairingState.connectedUser = null
+
       console.log(chalk.green('[SUCCESS] Session storage has been wiped clean.'))
       console.log(chalk.cyan('\n[ACTION REQUIRED] Please restart the bot and re-pair your device.'))
+
+      // Force exit to ensure a clean restart (Render/Docker will auto-restart)
+      setTimeout(() => {
+        console.log(chalk.yellow('[INFO] Restarting process...'))
+        process.exit(0)
+      }, 3000)
     }
   }
 }
