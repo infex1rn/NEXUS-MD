@@ -95,20 +95,22 @@ setInterval(async () => {
  * Print NEXUS-MD banner
  */
 function printBanner() {
-  console.log(chalk.cyan(`
-╔═══════════════════════════════════════════════════════════╗
-║                                                           ║
-║   ███╗   ██╗███████╗██╗  ██╗██╗   ██╗███████╗             ║
-║   ████╗  ██║██╔════╝╚██╗██╔╝██║   ██║██╔════╝             ║
-║   ██╔██╗ ██║█████╗   ╚███╔╝ ██║   ██║███████╗             ║
-║   ██║╚██╗██║██╔══╝   ██╔██╗ ██║   ██║╚════██║             ║
-║   ██║ ╚████║███████╗██╔╝ ██╗╚██████╔╝███████║             ║
-║   ╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝             ║
-║                     ${chalk.white('NEXUS-MD v1.0.0')}                        ║
-║               ${chalk.gray('Multi-Device WhatsApp Bot')}                    ║
-║                                                           ║
-╚═══════════════════════════════════════════════════════════╝
-  `))
+  const banner = `
+  ╭───────────────────────────────────────────────────────────╮
+  │                                                           │
+  │   ${chalk.blue('███╗   ██╗███████╗██╗  ██╗██╗   ██╗███████╗')}             │
+  │   ${chalk.blue('████╗  ██║██╔════╝╚██╗██╔╝██║   ██║██╔════╝')}             │
+  │   ${chalk.cyan('██╔██╗ ██║█████╗   ╚███╔╝ ██║   ██║███████╗')}             │
+  │   ${chalk.cyan('██║╚██╗██║██╔══╝   ██╔██╗ ██║   ██║╚════██║')}             │
+  │   ${chalk.magenta('██║ ╚████║███████╗██╔╝ ██╗╚██████╔╝███████║')}             │
+  │   ${chalk.magenta('╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝')}             │
+  │                                                           │
+  │                 ${chalk.white.bold('NEXUS-MD PREMIUM v1.0.0')}                  │
+  │             ${chalk.gray.italic('The Ultimate Multi-Device WhatsApp Bot')}          │
+  │                                                           │
+  ╰───────────────────────────────────────────────────────────╯
+  `
+  console.log(chalk.blue(banner))
 }
 
 printBanner()
@@ -243,16 +245,16 @@ async function requestPairingCode(phoneNumber) {
       const code = await global.conn.requestPairingCode(cleanNumber)
       const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code
 
-      console.log(chalk.green('\n╔═══════════════════════════════════════╗'))
-      console.log(chalk.green('║         📲 PAIRING CODE               ║'))
-      console.log(chalk.green('╠═══════════════════════════════════════╣'))
-      console.log(chalk.green(`║     ${chalk.white.bold(formattedCode)}                  ║`))
-      console.log(chalk.green('╠═══════════════════════════════════════╣'))
-      console.log(chalk.green('║  1. Open WhatsApp on your phone       ║'))
-      console.log(chalk.green('║  2. Go to Settings > Linked Devices   ║'))
-      console.log(chalk.green('║  3. Tap "Link a Device"               ║'))
-      console.log(chalk.green('║  4. Enter the code above              ║'))
-      console.log(chalk.green('╚═══════════════════════════════════════╝\n'))
+      console.log(chalk.cyan('\n  ╭───────────────────────────────────────╮'))
+      console.log(chalk.cyan('  │') + chalk.bold.white('         📲 PAIRING CODE               ') + chalk.cyan('│'))
+      console.log(chalk.cyan('  ├───────────────────────────────────────┤'))
+      console.log(chalk.cyan('  │') + chalk.yellow.bold(`     ${formattedCode.padEnd(26)} `) + chalk.cyan('│'))
+      console.log(chalk.cyan('  ├───────────────────────────────────────┤'))
+      console.log(chalk.cyan('  │') + chalk.gray('  1. Open WhatsApp on your phone       ') + chalk.cyan('│'))
+      console.log(chalk.cyan('  │') + chalk.gray('  2. Go to Settings > Linked Devices   ') + chalk.cyan('│'))
+      console.log(chalk.cyan('  │') + chalk.gray('  3. Tap "Link a Device"               ') + chalk.cyan('│'))
+      console.log(chalk.cyan('  │') + chalk.gray('  4. Enter the code above              ') + chalk.cyan('│'))
+      console.log(chalk.cyan('  ╰───────────────────────────────────────╯\n'))
 
       return code
     } catch (innerError) {
@@ -467,10 +469,26 @@ global.reloadHandler = async function(restatConn) {
   }
 
   // Welcome/bye messages
-  conn.welcome = `Hello @user!\n\n🎉 *WELCOME* to the group @group!\n\n📜 Please read the *DESCRIPTION*: @desc`
-  conn.bye = `👋 GOODBYE @user\n\nSee you later!`
-  conn.spromote = `*@user* has been promoted to admin!`
-  conn.sdemote = `*@user* is no longer an admin.`
+  conn.welcome = `╭━━━〔 *WELCOME* 〕━━━┈
+┃
+┃ 👋 Hello *@user*!
+┃
+┃ 🎉 *Welcome to*
+┃ * @group*
+┃
+┃ 📜 *Description:*
+┃ @desc
+┃
+╰━━━━━━━━━━━━━━┈`
+  conn.bye = `╭━━━〔 *GOODBYE* 〕━━━┈
+┃
+┃ 👋 *Goodbye @user*
+┃
+┃ We'll miss you!
+┃
+╰━━━━━━━━━━━━━━┈`
+  conn.spromote = `🎊 *CONGRATS!* *@user* is now an *Admin*!`
+  conn.sdemote = `⚠️ *@user* is no longer an *Admin*!`
 
   conn.handler = handler.handler.bind(global.conn)
   conn.participantsUpdate = handler.participantsUpdate.bind(global.conn)

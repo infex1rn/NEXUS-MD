@@ -56,16 +56,20 @@ let handler = async (m, { conn, usedPrefix }) => {
     other: 'Other'
   }
   
-  let menuText = `
-╭━━━━━━━━━━━━━━━━━━━━━╮
-┃  🤖 *NEXUS-MD BOT*
-┃━━━━━━━━━━━━━━━━━━━━━
-┃  📋 *Command Menu*
-┃  ⏰ ${new Date().toLocaleString()}
-╰━━━━━━━━━━━━━━━━━━━━━╯
+  const uptime = process.uptime()
+  const hours = Math.floor(uptime / 3600)
+  const minutes = Math.floor((uptime % 3600) / 60)
+  const runtime = `${hours}h ${minutes}m`
 
-*Prefix:* ${usedPrefix}
-*Total Commands:* ${Object.values(commands).flat().length}
+  let menuText = `╭━━━〔 *NEXUS-MD* 〕━━━┈
+┃
+┃ 🤖 *BOT:* Nexus-MD Premium
+┃ 👤 *USER:* @${m.sender.split('@')[0]}
+┃ 🚀 *RUNTIME:* ${runtime}
+┃ 📊 *COMMANDS:* ${Object.values(commands).flat().length}
+┃ 📍 *PREFIX:* [ ${usedPrefix} ]
+┃
+╰━━━━━━━━━━━━━━━━━━━┈
 
 `
 
@@ -84,21 +88,23 @@ let handler = async (m, { conn, usedPrefix }) => {
     const emoji = categoryEmoji[category] || '📦'
     const name = categoryNames[category] || category.toUpperCase()
     
-    menuText += `╭─── ${emoji} *${name}* ───\n`
+    menuText += `╭━━━〔 ${emoji} *${name}* 〕━━━┈\n┃\n`
     
     for (const { cmd, help } of cmds) {
-      menuText += `│ ◦ ${usedPrefix}${help}\n`
+      menuText += `┃ ◦ ${usedPrefix}${help}\n`
     }
     
-    menuText += `╰─────────────────\n\n`
+    menuText += `┃\n╰━━━━━━━━━━━━━━━━━━━┈\n\n`
   }
   
   menuText += `
-╭━━━━━━━━━━━━━━━━━━━━━╮
-┃  💡 *Tips:*
-┃  • Type command for help
-┃  • Example: ${usedPrefix}sticker
-╰━━━━━━━━━━━━━━━━━━━━━╯
+╭━━━〔 *INFO* 〕━━━┈
+┃
+┃ 💡 *Tips:*
+┃ • Type command for help
+┃ • Example: ${usedPrefix}sticker
+┃
+╰━━━━━━━━━━━━━━┈
 
 _Powered by NEXUS-MD Bot_
 `.trim()

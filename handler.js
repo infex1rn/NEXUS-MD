@@ -494,16 +494,58 @@ function formatDuration(ms) {
  * Default fail handler
  */
 global.dfail = (type, m, conn) => {
-  const userTag = `👋 Hey *@${m.sender.split('@')[0]}*, `
+  const userTag = `*@${m.sender.split('@')[0]}*`
   
   const msg = {
-    owner: `${userTag}This command can only be used by the *Bot Owner*!`,
-    rowner: `${userTag}This command is restricted to the *Real Owner* only!`,
-    mods: `${userTag}This command can only be used by *Moderators*!`,
-    group: `${userTag}This command can only be used in *Group Chats*!`,
-    private: `${userTag}This command can only be used in *Private Chats*!`,
-    admin: `${userTag}This command is only for *Group Admins*!`,
-    botAdmin: `${userTag}Make the bot an *Admin* to use this command!`,
+    owner: `╭━━━〔 *ACCESS DENIED* 〕━━━┈
+┃
+┃ 👑 Hey ${userTag},
+┃ This command is only for
+┃ the *Bot Owner*!
+┃
+╰━━━━━━━━━━━━━━┈`,
+    rowner: `╭━━━〔 *ACCESS DENIED* 〕━━━┈
+┃
+┃ 🛡️ Hey ${userTag},
+┃ This command is for the
+┃ *Real Owner* only!
+┃
+╰━━━━━━━━━━━━━━┈`,
+    mods: `╭━━━〔 *ACCESS DENIED* 〕━━━┈
+┃
+┃ 🛠️ Hey ${userTag},
+┃ This command is only for
+┃ *Moderators*!
+┃
+╰━━━━━━━━━━━━━━┈`,
+    group: `╭━━━〔 *NOTICE* 〕━━━┈
+┃
+┃ 👥 Hey ${userTag},
+┃ This command can only be
+┃ used in *Groups*!
+┃
+╰━━━━━━━━━━━━━━┈`,
+    private: `╭━━━〔 *NOTICE* 〕━━━┈
+┃
+┃ 👤 Hey ${userTag},
+┃ This command can only be
+┃ used in *Private Chats*!
+┃
+╰━━━━━━━━━━━━━━┈`,
+    admin: `╭━━━〔 *ACCESS DENIED* 〕━━━┈
+┃
+┃ 👮 Hey ${userTag},
+┃ This command is only for
+┃ *Group Admins*!
+┃
+╰━━━━━━━━━━━━━━┈`,
+    botAdmin: `╭━━━〔 *ACCESS DENIED* 〕━━━┈
+┃
+┃ 🤖 Hey ${userTag},
+┃ Please make the bot an
+┃ *Admin* to use this!
+┃
+╰━━━━━━━━━━━━━━┈`,
   }[type]
   
   if (msg) return m.reply(msg, null, { mentions: [m.sender] })
