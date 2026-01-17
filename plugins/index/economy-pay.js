@@ -74,7 +74,7 @@ ${CURRENCY.symbol} *Amount:* ${formatMoney(amount)}
 
 handler.help = ['pay @user <amount>', 'transfer @user <amount>']
 handler.tags = ['economy']
-handler.command = ['pay', 'transfer', 'give', 'send']
+handler.command = ['pay', 'transfer', 'send']
 handler.desc = 'Transfer money to another user'
 
 export default handler

@@ -1,31 +1,37 @@
 /**
- * RPG Give Plugin - Allows owners to give coins to users
+ * RPG Give Plugin - Allows owners to mint money and users to transfer it
  */
+import {
+  initUserEconomy,
+  formatMoney,
+  removeMoney,
+  addMoney,
+  CURRENCY
+} from '../../lib/economy.js'
 
-let handler = async (m, { conn, text, usedPrefix, command }) => {
-    if (!text) throw `*Format:* ${usedPrefix + command} <amount> @user\n*Example:* ${usedPrefix + command} 1000 @1234567890`
+let handler = async (m, { conn, args, usedPrefix, command, isOwner }) => {
+    const mentioned = m.mentionedJid?.[0] || (m.quoted ? m.quoted.sender : null)
 
-    // Get targeted user (mention, quoted message, or raw number)
-    let _user = m.mentionedJid[0] ? m.mentionedJid[0] : m.quoted ? m.quoted.sender : null
-
-    // If no mention or quote, try to parse from text
-    if (!_user) {
-        let jid = text.replace(/[^0-9]/g, '') + '@s.whatsapp.net'
-        if (jid.length > 15) _user = jid
+    if (!mentioned) {
+        return m.reply(`*Format:* ${usedPrefix + command} @user <amount>\n*Example:* ${usedPrefix + command} @user 1000`)
     }
 
-    if (!_user) throw `*Error:* Please mention a user, quote their message, or provide their phone number.`
+    if (mentioned === m.sender && !isOwner) {
+        return m.reply(`❌ You can't transfer money to yourself!`)
+    }
 
-    // Parse amount
-    let amount = text.match(/\d+/g)
-    if (!amount) throw `*Error:* Please specify the amount of coins to give.`
-    amount = parseInt(amount[0])
+    // Parse amount from args
+    const amountArg = args.find(arg => !isNaN(parseInt(arg.replace(/[^0-9]/g, ''))))
+    let amount = parseInt(amountArg?.replace(/[^0-9]/g, ''))
 
-    // Check if user exists in database
-    let user = global.db.data.users[_user]
-    if (!user) {
-        // Initialize user if they don't exist but we're giving them money
-        global.db.data.users[_user] = {
+    if (!amount || amount <= 0) {
+        return m.reply(`❌ Please specify a valid amount of coins to give.`)
+    }
+
+    // Check if target exists in database
+    let receiver = global.db.data.users[mentioned]
+    if (!receiver) {
+        global.db.data.users[mentioned] = {
             warn: 0,
             registered: false,
             name: '',
@@ -38,18 +44,42 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             lastClaim: 0,
             role: 'Novice',
         }
-        user = global.db.data.users[_user]
+        receiver = global.db.data.users[mentioned]
     }
 
-    // Add balance
-    user.balance += amount
+    if (isOwner) {
+        // Minting Mode
+        addMoney(receiver, amount)
+        // Sync balance if it exists (no double adding)
+        if (receiver && typeof receiver.balance === 'number') receiver.balance = receiver.economy.wallet
 
-    m.reply(`✅ *RPG GIVE*\n\nSuccessfully gave *${amount.toLocaleString()}* coins to *@${_user.split('@')[0]}*\n\n*New Balance:* ${user.balance.toLocaleString()}`, null, { mentions: [_user] })
+        m.reply(`✅ *MINT SUCCESS*\n\nSuccessfully minted *${formatMoney(amount)}* for *@${mentioned.split('@')[0]}*`, null, { mentions: [mentioned] })
+    } else {
+        // Transfer Mode
+        const sender = global.db.data.users[m.sender]
+        const senderEconomy = initUserEconomy(sender)
+
+        if (senderEconomy.wallet < amount) {
+            return m.reply(`❌ *Insufficient Funds!*\n\nYou only have ${formatMoney(senderEconomy.wallet)} in your wallet.`)
+        }
+
+        // Transfer tax (2%)
+        const tax = Math.floor(amount * 0.02)
+        const received = amount - tax
+
+        removeMoney(sender, amount)
+        addMoney(receiver, received)
+
+        // Sync balance if they exist
+        if (sender && typeof sender.balance === 'number') sender.balance = sender.economy.wallet
+        if (receiver && typeof receiver.balance === 'number') receiver.balance = receiver.economy.wallet
+
+        m.reply(`✅ *TRANSFER SUCCESS*\n\nSent *${formatMoney(received)}* to *@${mentioned.split('@')[0]}*\nTax (2%): ${formatMoney(tax)}`, null, { mentions: [mentioned] })
+    }
 }
 
-handler.help = ['give <amount> @user']
-handler.tags = ['owner']
+handler.help = ['give @user <amount>']
+handler.tags = ['economy']
 handler.command = ['give', 'addmoney']
-handler.owner = true
 
 export default handler
