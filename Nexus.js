@@ -30,13 +30,14 @@ import { createServer, pairingState } from './server.js'
 
 dotenv.config()
 
-// Global path helpers
+const requestPairingCodeWrapper = async (num) => {
+  if (global.requestPairingCode) return await global.requestPairingCode(num)
+  throw new Error('Bot not initialized')
+}
+createServer(null, requestPairingCodeWrapper)
+
 global.__filename = function filename(pathURL = import.meta.url, rmPrefix = platform !== 'win32') {
-  return rmPrefix
-    ? /file:\/\/\//.test(pathURL)
-      ? fileURLToPath(pathURL)
-      : pathURL
-    : pathToFileURL(pathURL).toString()
+  return rmPrefix ? (/file:\/\/\//.test(pathURL) ? fileURLToPath(pathURL) : pathURL) : pathToFileURL(pathURL).toString()
 }
 global.__dirname = function dirname(pathURL) {
   return path.dirname(global.__filename(pathURL, true))
@@ -45,426 +46,139 @@ global.__require = function require(dir = import.meta.url) {
   return createRequire(dir)
 }
 
-const MAIN_LOGGER = pino({ timestamp: () => `,"time":"${new Date().toJSON()}"` })
-const logger = MAIN_LOGGER.child({})
-logger.level = 'fatal'
-
+const MAIN_LOGGER = pino({ level: 'fatal' })
 const msgRetryCounterCache = new NodeCache()
 const groupMetadataCache = new NodeCache({ stdTTL: 5 * 60, useClones: false })
 
 const __dirname_current = global.__dirname(import.meta.url)
 global.opts = new Object(yargs(process.argv.slice(2)).exitProcess(false).parse())
 
-// Initialize proto types
 protoType()
 serialize()
 
-// Global timestamp
-global.timestamp = {
-  start: new Date(),
-}
+global.timestamp = { start: new Date() }
 
-// Initialize Firebase Database
-console.log(chalk.blue('[INFO] Initializing Firebase database...'))
 const firebaseDB = new FirebaseDB()
 await firebaseDB.connect()
-
 global.db = firebaseDB
 
 global.loadDatabase = async function loadDatabase() {
   await global.db.read()
-  // Ensure database structure is initialized
   if (!global.db.data) global.db.data = {}
   if (!global.db.data.users) global.db.data.users = {}
   if (!global.db.data.chats) global.db.data.chats = {}
   if (!global.db.data.settings) global.db.data.settings = {}
   if (!global.db.data.stats) global.db.data.stats = {}
 }
-
 await global.loadDatabase()
 
-// Auto-save database every 60 seconds
 setInterval(async () => {
-  if (global.db.data) {
-    await global.db.write()
-  }
+  if (global.db.data) await global.db.write()
 }, 60 * 1000)
 
-/**
- * Print NEXUS-MD banner
- */
-function printBanner() {
-  const banner = `
-  ╭───────────────────────────────────────────────────────────╮
-  │                                                           │
-  │   ${chalk.blue('███╗   ██╗███████╗██╗  ██╗██╗   ██╗███████╗')}             │
-  │   ${chalk.blue('████╗  ██║██╔════╝╚██╗██╔╝██║   ██║██╔════╝')}             │
-  │   ${chalk.cyan('██╔██╗ ██║█████╗   ╚███╔╝ ██║   ██║███████╗')}             │
-  │   ${chalk.cyan('██║╚██╗██║██╔══╝   ██╔██╗ ██║   ██║╚════██║')}             │
-  │   ${chalk.magenta('██║ ╚████║███████╗██╔╝ ██╗╚██████╔╝███████║')}             │
-  │   ${chalk.magenta('╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝')}             │
-  │                                                           │
-  │                 ${chalk.white.bold('NEXUS-MD PREMIUM v1.0.0')}                  │
-  │             ${chalk.gray.italic('The Ultimate Multi-Device WhatsApp Bot')}          │
-  │                                                           │
-  ╰───────────────────────────────────────────────────────────╯
-  `
-  console.log(chalk.blue(banner))
-}
-
-printBanner()
-
-// Auth state - Use Firebase for session storage if available, fallback to file-based
 let state, saveCreds
-
-// Check if Firebase is configured
 const useFirebase = process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY
 
 if (useFirebase) {
-  console.log(chalk.blue('[INFO] Using Firebase for session storage'))
   const firebaseAuth = await useFirebaseAuthState()
   state = firebaseAuth.state
   saveCreds = firebaseAuth.saveCreds
 } else {
-  console.log(chalk.yellow('[INFO] Firebase not configured, using file-based session storage'))
-  console.log(chalk.yellow('[INFO] Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY for cloud session storage'))
   const fileAuth = await useMultiFileAuthState('./auth_info')
   state = fileAuth.state
   saveCreds = fileAuth.saveCreds
 }
 
-// Fetch the latest WhatsApp Web version dynamically to avoid 405 errors
-// WhatsApp frequently updates their protocol, causing hardcoded versions to fail
 let version
-
-/**
- * Fetch the latest WhatsApp Web version with retries and fallbacks
- * @returns {Promise<Array<number>|null>} Version array [major, minor, patch] or null if fetch fails
- */
 async function getLatestVersion() {
   try {
-    const versionInfo = await fetchLatestBaileysVersion()
-    console.log(chalk.blue(`[INFO] Using WhatsApp Web version: ${versionInfo.version.join('.')} (latest: ${versionInfo.isLatest})`))
-    return versionInfo.version
-  } catch (error) {
-    // Fallback: the official Baileys library auto-fetches version internally
-    // If explicit fetch fails, return null to let Baileys handle it
-    console.log(chalk.yellow(`[WARN] Failed to fetch latest version: ${error.message}`))
-    console.log(chalk.yellow('[INFO] Baileys will attempt to use its internal version handling'))
+    const v = await fetchLatestBaileysVersion()
+    return v.version
+  } catch {
     return null
   }
 }
-
 version = await getLatestVersion()
 
-/**
- * Get browser configuration for pairing code compatibility
- * Uses Ubuntu Chrome format which is proven to work with pairing codes
- * Based on working implementations from GURU-Ai and other WhatsApp bot projects
- * @returns {Array} Browser configuration array for Baileys
- */
-function getBrowserConfig() {
-  // Use Ubuntu Chrome format - this is proven to work with pairing codes
-  // Format: [platform, browser, version] matching GURU-Ai's working configuration
-  const browserConfig = ['Ubuntu', 'Chrome', '20.0.04']
-  
-  console.log(chalk.blue(`[INFO] Browser platform: Ubuntu Chrome 20.0.04`))
-  
-  return browserConfig
-}
-
-// Function to create connection options with current version
-// Note: This function references the module-level 'version' variable, so updates
-// to 'version' before calling this function will be reflected in the options
 function getConnectionOptions() {
-  // Permanent Bad MAC & Stability Fixes - Ensured Keys & History Sync Settings
-  const options = {
-    logger: pino({ level: 'fatal' }),
+  return {
+    logger: MAIN_LOGGER,
     printQRInTerminal: false,
-    browser: getBrowserConfig(),
+    browser: ['Ubuntu', 'Chrome', '20.0.04'],
     auth: {
       creds: state.creds,
-      keys: makeCacheableSignalKeyStore(state.keys, MAIN_LOGGER.child({ level: 'fatal' }))
+      keys: makeCacheableSignalKeyStore(state.keys, MAIN_LOGGER)
     },
     markOnlineOnConnect: true,
-    generateHighQualityLinkPreview: true,
-    cachedGroupMetadata: async (jid) => {
-      const cached = groupMetadataCache.get(jid)
-      if (cached) return cached
-      return null
-    },
-    getMessage: async (key) => {
-      return { conversation: '' }
-    },
-    msgRetryCounterCache,
-    // Permanent Bad MAC & Stability Fixes
     syncFullHistory: false,
     shouldSyncHistoryMessage: () => false,
     connectTimeoutMs: 60000,
-    defaultQueryTimeoutMs: 0,
-    keepAliveIntervalMs: 10000,
-    generateHighQualityLinkPreview: true
+    msgRetryCounterCache,
+    version: version || [2, 3000, 1015901307]
   }
-  
-  // Only include version if successfully fetched, otherwise let Baileys auto-detect
-  if (version) {
-    options.version = version
-  }
-  
-  return options
 }
 
-// Create socket
+let isReloading = false
 global.conn = makeWASocketExtended(getConnectionOptions())
-conn.isInit = false
 
-// Function to request pairing code (used by both terminal and web interface)
-async function requestPairingCode(phoneNumber) {
+global.requestPairingCode = async function(phoneNumber) {
   const cleanNumber = phoneNumber.replace(/[^0-9]/g, '')
+  if (!cleanNumber || cleanNumber.length < 8) throw new Error('Invalid phone number')
+  if (global.conn?.authState?.creds?.registered) throw new Error('Already registered')
   
-  if (!cleanNumber || cleanNumber.length < 8) {
-    throw new Error('Invalid phone number format. Please include country code (Example: 1234567890)')
+  if (!global.conn?.ws || global.conn.ws.readyState !== 1) {
+    await global.reloadHandler(true)
+    await delay(5000)
   }
-  
-  // Check if already registered
-  if (global.conn?.authState?.creds?.registered) {
-    throw new Error('Device is already registered. Please unlink first.')
-  }
-
-  // Helper to check if connection is active
-  const isConnectionActive = () => {
-    return global.conn && global.conn.ws && (global.conn.ws.readyState === 1 || global.conn.ws.readyState === 0)
-  }
-  
-  try {
-    // Ensure connection is active before requesting code
-    if (!isConnectionActive()) {
-      console.log(chalk.yellow('[INFO] Connection inactive, re-initializing before requesting pairing code...'))
-      await global.reloadHandler(true)
-      await delay(5000) // Wait longer for socket to initialize
-    } else {
-      // Short delay for existing connection
-      await delay(3000)
-    }
-    
-    try {
-      const code = await global.conn.requestPairingCode(cleanNumber)
-      const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code
-
-      console.log(chalk.cyan('\n  ╭───────────────────────────────────────╮'))
-      console.log(chalk.cyan('  │') + chalk.bold.white('         📲 PAIRING CODE               ') + chalk.cyan('│'))
-      console.log(chalk.cyan('  ├───────────────────────────────────────┤'))
-      console.log(chalk.cyan('  │') + chalk.yellow.bold(`     ${formattedCode.padEnd(26)} `) + chalk.cyan('│'))
-      console.log(chalk.cyan('  ├───────────────────────────────────────┤'))
-      console.log(chalk.cyan('  │') + chalk.gray('  1. Open WhatsApp on your phone       ') + chalk.cyan('│'))
-      console.log(chalk.cyan('  │') + chalk.gray('  2. Go to Settings > Linked Devices   ') + chalk.cyan('│'))
-      console.log(chalk.cyan('  │') + chalk.gray('  3. Tap "Link a Device"               ') + chalk.cyan('│'))
-      console.log(chalk.cyan('  │') + chalk.gray('  4. Enter the code above              ') + chalk.cyan('│'))
-      console.log(chalk.cyan('  ╰───────────────────────────────────────╯\n'))
-
-      return code
-    } catch (innerError) {
-      // If it failed with "Connection Closed", try one more time after a full reload
-      if (innerError.message.includes('Closed')) {
-        console.log(chalk.yellow('[INFO] Connection closed during request, retrying after reload...'))
-        await global.reloadHandler(true)
-        await delay(5000)
-        const code = await global.conn.requestPairingCode(cleanNumber)
-        return code
-      }
-      throw innerError
-    }
-  } catch (error) {
-    console.log(chalk.red("Failed to generate pairing code:"), error.message)
-    throw error
-  }
+  return await global.conn.requestPairingCode(cleanNumber)
 }
-
-// Start web server for pairing and dashboard
-createServer(conn, requestPairingCode)
-
-// Only use web interface for pairing to avoid duplicate code generation conflicts
-if (!conn.authState.creds.registered) {
-  console.log(chalk.cyan("\n📱 Use the web interface to pair your device!\n"))
-}
-
-console.log(chalk.yellow('\n[INFO] Waiting for connection...\n'))
-
-// Connection update handler
-// Track reconnection attempts to prevent infinite loops
-let reconnectAttempts = 0
-const MAX_RECONNECT_ATTEMPTS = 5
 
 async function connectionUpdate(update) {
-  const { connection, lastDisconnect, isNewLogin } = update
-  global.stopped = connection
-
-  if (isNewLogin) conn.isInit = true
-
+  const { connection, lastDisconnect } = update
   const code = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.output?.payload?.statusCode
 
-  // Handle 405 error specifically - this means the WhatsApp version is outdated
-  // or there's a protocol mismatch. Don't attempt infinite reconnects.
-  if (code === 405) {
-    reconnectAttempts++
-    console.log(chalk.red(`\n[ERROR] Received 405 error (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`))
-    console.log(chalk.yellow('[INFO] This usually means WhatsApp protocol has been updated.'))
-    
-    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      console.log(chalk.red('\n╔══════════════════════════════════════════════════════════╗'))
-      console.log(chalk.red('║                🚨 CRITICAL SESSION ERROR                 ║'))
-      console.log(chalk.red('╠══════════════════════════════════════════════════════════╣'))
-      console.log(chalk.red('║ Max reconnection attempts reached. Your session may be   ║'))
-      console.log(chalk.red('║ invalid or the WhatsApp protocol has been updated.       ║'))
-      console.log(chalk.red('╚══════════════════════════════════════════════════════════╝\n'))
-
-      console.log(chalk.yellow('[INFO] Automatically clearing invalid session...'))
-      if (useFirebase) {
-        await clearFirebaseAuthState()
-      } else {
-        try { rmSync('./auth_info', { recursive: true, force: true }) } catch (e) {}
-      }
-
-      // Clear in-memory state to prevent stale "connected" status
-      if (state && state.creds) {
-        state.creds = initAuthCreds()
-      }
-      if (global.conn && global.conn.authState) {
-        global.conn.authState.creds = state.creds
-      }
-
-      // Update pairing state for web UI
-      pairingState.status = 'idle'
-      pairingState.connectedUser = null
-
-      console.log(chalk.green('[SUCCESS] Invalid session cleared successfully.'))
-      console.log(chalk.cyan('\n[ACTION REQUIRED] Please:'))
-      console.log(chalk.cyan('  1. Restart the bot'))
-      console.log(chalk.cyan('  2. Re-pair your device using the web dashboard'))
-
-      // Force exit for clean restart (Render/Docker will auto-restart)
-      setTimeout(() => {
-        console.log(chalk.yellow('[INFO] Restarting process...'))
-        process.exit(0)
-      }, 3000)
-      return // Stop trying to reconnect
-    }
-    
-    // Wait before retrying with exponential backoff
-    const waitTime = Math.min(60000, 10000 * reconnectAttempts)
-    console.log(chalk.yellow(`[INFO] Waiting ${waitTime / 1000}s before retry...`))
-    await delay(waitTime)
-    
-    // Re-fetch the latest version before reconnecting
-    try {
-      console.log(chalk.yellow('[INFO] Fetching latest WhatsApp Web version...'))
-      version = await getLatestVersion()
-      console.log(chalk.yellow('[INFO] Attempting reconnection after 405 error...'))
-      await global.reloadHandler(true)
-    } catch (error) {
-      console.error('Error reconnecting after 405:', error)
-    }
-    return // Exit after handling 405 to avoid duplicate reconnection attempts
-  }
-
-  // Reconnect if connection is closed and it's not a logout or 405
   if (connection === 'close') {
-    console.log(chalk.red(`\n[DISCONNECTED] Connection closed. Reason: ${code}`))
-    
-    if (code === DisconnectReason.loggedOut) {
-      console.log(chalk.red('\n╔══════════════════════════════════════════════════════════╗'))
-      console.log(chalk.red('║                 ⚠️  LOGGED OUT DETECTED                  ║'))
-      console.log(chalk.red('╚══════════════════════════════════════════════════════════╝\n'))
-
-      console.log(chalk.yellow(`[INFO] Automatically clearing session from ${useFirebase ? 'Firebase database' : 'local storage'}...`))
-
-      if (useFirebase) {
-        await clearFirebaseAuthState()
-      } else {
-        try { rmSync('./auth_info', { recursive: true, force: true }) } catch (e) {}
+    console.log(chalk.red(`Connection closed. Reason: ${code}`))
+    if (code === DisconnectReason.loggedOut || code === 405) {
+      if (code === DisconnectReason.loggedOut) {
+        if (useFirebase) await clearFirebaseAuthState()
+        else try { rmSync('./auth_info', { recursive: true, force: true }) } catch {}
       }
-
-      // Clear in-memory state to prevent stale "connected" status
-      if (state && state.creds) {
-        state.creds = initAuthCreds()
-      }
-      if (global.conn && global.conn.authState) {
-        global.conn.authState.creds = state.creds
-      }
-
-      // Update pairing state for web UI
-      pairingState.status = 'idle'
-      pairingState.connectedUser = null
-
-      console.log(chalk.green('[SUCCESS] Session storage has been wiped clean.'))
-      console.log(chalk.cyan('\n[ACTION REQUIRED] Please restart the bot and re-pair your device.'))
-
-      // Force exit to ensure a clean restart (Render/Docker will auto-restart)
-      setTimeout(() => {
-        console.log(chalk.yellow('[INFO] Restarting process...'))
-        process.exit(0)
-      }, 3000)
-    } else if (code !== 405) {
-      try {
-        console.log(chalk.yellow('[INFO] Reconnecting...'))
-        await global.reloadHandler(true)
-      } catch (error) {
-        console.error('Error reloading handler:', error)
-      }
+      process.exit(0)
+    } else {
+      await global.reloadHandler(true)
     }
-  }
-
-  if (global.db.data == null) await loadDatabase()
-
-  if (connection === 'open') {
-    // Reset reconnect attempts on successful connection
-    reconnectAttempts = 0
-
-    const { jid, name } = conn.user
-    console.log(chalk.green(`\n[SUCCESS] Connected as ${name || jid}`))
-    console.log(chalk.cyan('\n🤖 NEXUS-MD is now online!\n'))
-
-    // Update pairing state for web interface
+  } else if (connection === 'open') {
     pairingState.status = 'connected'
-    pairingState.connectedUser = { jid, name }
-
-    // Send welcome message
-    try {
-      const welcomeMsg = `*🤖 NEXUS-MD BOT ONLINE*\n\nHello ${name || 'there'}! Your bot is now connected.\n\nType *.menu* to see available commands.`
-      await conn.sendMessage(jid, { text: welcomeMsg })
-    } catch (e) {
-      console.error('Error sending welcome message:', e)
-    }
+    pairingState.connectedUser = { jid: this.user.id, name: this.user.name }
+    console.log(chalk.green(`Connected as ${this.user.name || this.user.id}`))
   }
-
 }
 
-// Credentials update handler
-conn.ev.on('creds.update', saveCreds)
-
-// Load handler
 let handler = await import('./handler.js')
 
-global.reloadHandler = async function(restatConn) {
+global.reloadHandler = async function(restartConn) {
+  if (isReloading) return
+  isReloading = true
+
   try {
-    const Handler = await import(`./handler.js?update=${Date.now()}`).catch(console.error)
-    if (Object.keys(Handler || {}).length) handler = Handler
-  } catch (error) {
-    console.error(error)
-  }
-  
-  if (restatConn) {
-    const oldChats = global.conn.chats
-    try {
-      global.conn.ws.close()
-    } catch {}
-    conn.ev.removeAllListeners()
-    // Use getConnectionOptions() to get fresh options with updated version
-    global.conn = makeWASocketExtended(getConnectionOptions(), { chats: oldChats })
-    isInit = true
-  }
-  
-  if (!isInit) {
+    const Handler = await import(`./handler.js?update=${Date.now()}`).catch(() => null)
+    if (Handler) handler = Handler
+
+    if (restartConn && global.conn) {
+      try {
+        const oldConn = global.conn
+        oldConn.ev.removeAllListeners()
+        if (oldConn.ws) {
+          oldConn.ws.terminate()
+          await delay(2000)
+        }
+      } catch (e) {}
+      global.conn = makeWASocketExtended(getConnectionOptions())
+    }
+
+    const conn = global.conn
+
     conn.ev.off('messages.upsert', conn.handler)
     conn.ev.off('group-participants.update', conn.participantsUpdate)
     conn.ev.off('groups.update', conn.groupsUpdate)
@@ -472,128 +186,73 @@ global.reloadHandler = async function(restatConn) {
     conn.ev.off('presence.update', conn.presenceUpdate)
     conn.ev.off('connection.update', conn.connectionUpdate)
     conn.ev.off('creds.update', conn.credsUpdate)
-  }
 
-  // Welcome/bye messages
-  conn.welcome = `╭━━━〔 *WELCOME* 〕━━━┈
-┃
-┃ 👋 Hello *@user*!
-┃
-┃ 🎉 *Welcome to*
-┃ * @group*
-┃
-┃ 📜 *Description:*
-┃ @desc
-┃
-╰━━━━━━━━━━━━━━┈`
-  conn.bye = `╭━━━〔 *GOODBYE* 〕━━━┈
-┃
-┃ 👋 *Goodbye @user*
-┃
-┃ We'll miss you!
-┃
-╰━━━━━━━━━━━━━━┈`
-  conn.spromote = `🎊 *CONGRATS!* *@user* is now an *Admin*!`
-  conn.sdemote = `⚠️ *@user* is no longer an *Admin*!`
+    conn.handler = handler.handler.bind(conn)
+    conn.participantsUpdate = handler.participantsUpdate.bind(conn)
+    conn.groupsUpdate = handler.groupsUpdate.bind(conn)
+    conn.onDelete = handler.deleteUpdate.bind(conn)
+    conn.presenceUpdate = handler.presenceUpdate.bind(conn)
+    conn.connectionUpdate = connectionUpdate.bind(conn)
+    conn.credsUpdate = saveCreds.bind(conn)
 
-  conn.handler = handler.handler.bind(global.conn)
-  conn.participantsUpdate = handler.participantsUpdate.bind(global.conn)
-  conn.groupsUpdate = handler.groupsUpdate.bind(global.conn)
-  conn.onDelete = handler.deleteUpdate.bind(global.conn)
-  conn.presenceUpdate = handler.presenceUpdate.bind(global.conn)
-  conn.connectionUpdate = connectionUpdate.bind(global.conn)
-  conn.credsUpdate = saveCreds.bind(global.conn)
+    conn.ev.on('messages.upsert', conn.handler)
+    conn.ev.on('group-participants.update', conn.participantsUpdate)
+    conn.ev.on('groups.update', conn.groupsUpdate)
+    conn.ev.on('message.delete', conn.onDelete)
+    conn.ev.on('presence.update', conn.presenceUpdate)
+    conn.ev.on('connection.update', conn.connectionUpdate)
+    conn.ev.on('creds.update', conn.credsUpdate)
 
-  conn.ev.on('messages.upsert', conn.handler)
-  conn.ev.on('group-participants.update', conn.participantsUpdate)
-  conn.ev.on('groups.update', conn.groupsUpdate)
-  conn.ev.on('message.delete', conn.onDelete)
-  conn.ev.on('presence.update', conn.presenceUpdate)
-  conn.ev.on('connection.update', conn.connectionUpdate)
-  conn.ev.on('creds.update', conn.credsUpdate)
-  
-  isInit = false
-  return true
-}
-
-let isInit = true
-
-// Load plugins
-const pluginFolder = join(__dirname_current, 'plugins/index')
-const pluginFilter = filename => /\.js$/.test(filename)
-global.plugins = {}
-
-async function filesInit() {
-  for (const filename of readdirSync(pluginFolder).filter(pluginFilter)) {
-    try {
-      const file = global.__filename(join(pluginFolder, filename))
-      const module = await import(file)
-      global.plugins[filename] = module.default || module
-    } catch (e) {
-      console.error(chalk.red(`[ERROR] Failed to load plugin: ${filename}`))
-      console.error(e)
-      delete global.plugins[filename]
-    }
+  } catch (error) {
+    console.error(error)
+  } finally {
+    isReloading = false
   }
 }
-
-filesInit()
-  .then(_ => {
-    console.log(chalk.green(`[INFO] Loaded ${Object.keys(global.plugins).length} plugins`))
-  })
-  .catch(console.error)
-
-// Watch for plugin changes
-global.reload = async (_ev, filename) => {
-  if (pluginFilter(filename)) {
-    const dir = global.__filename(join(pluginFolder, filename), true)
-    if (filename in global.plugins) {
-      if (existsSync(dir)) console.log(chalk.blue(`[INFO] Updated plugin - '${filename}'`))
-      else {
-        console.log(chalk.yellow(`[INFO] Deleted plugin - '${filename}'`))
-        return delete global.plugins[filename]
-      }
-    } else console.log(chalk.green(`[INFO] New plugin - '${filename}'`))
-    
-    const err = syntaxerror(readFileSync(dir), filename, {
-      sourceType: 'module',
-      allowAwaitOutsideFunction: true,
-    })
-    if (err) console.error(chalk.red(`[ERROR] Syntax error in '${filename}'\n${format(err)}`))
-    else {
-      try {
-        const module = await import(`${global.__filename(dir)}?update=${Date.now()}`)
-        global.plugins[filename] = module.default || module
-      } catch (e) {
-        console.error(chalk.red(`[ERROR] Error loading plugin '${filename}'\n${format(e)}'`))
-      } finally {
-        global.plugins = Object.fromEntries(
-          Object.entries(global.plugins).sort(([a], [b]) => a.localeCompare(b))
-        )
-      }
-    }
-  }
-}
-
-Object.freeze(global.reload)
-watch(pluginFolder, global.reload)
 
 await global.reloadHandler()
 
-// Handle uncaught exceptions
+const pluginFolder = join(__dirname_current, 'plugins/index')
+global.plugins = {}
+async function loadPlugins() {
+  for (const filename of readdirSync(pluginFolder).filter(f => f.endsWith('.js'))) {
+    try {
+      const m = await import(global.__filename(join(pluginFolder, filename)) + `?update=${Date.now()}`)
+      global.plugins[filename] = m.default || m
+    } catch (e) {
+      console.error(e)
+    }
+  }
+}
+await loadPlugins()
+
+global.reload = async (_ev, filename) => {
+  if (filename.endsWith('.js')) {
+    const dir = join(pluginFolder, filename)
+    if (existsSync(dir)) {
+      try {
+        const m = await import(global.__filename(dir) + `?update=${Date.now()}`)
+        global.plugins[filename] = m.default || m
+        console.log(chalk.blue(`Plugin updated: ${filename}`))
+      } catch (e) {
+        console.error(e)
+      }
+    } else {
+      delete global.plugins[filename]
+      console.log(chalk.yellow(`Plugin deleted: ${filename}`))
+    }
+  }
+}
+watch(pluginFolder, global.reload)
+
 process.on('uncaughtException', console.error)
 process.on('unhandledRejection', console.error)
 
-// Graceful shutdown handler for Render
-process.on('SIGTERM', async () => {
-  console.log(chalk.yellow('\n[INFO] SIGTERM received. Saving database...'))
-  if (global.db.data) {
-    try {
-      await global.db.write()
-      console.log(chalk.green('[SUCCESS] Database saved successfully.'))
-    } catch (e) {
-      console.error(chalk.red('[ERROR] Failed to save database on shutdown:'), e)
-    }
-  }
+const shutdown = async () => {
+  console.log(chalk.yellow('Shutting down...'))
+  if (global.db.data) await global.db.write()
+  if (global.conn?.ws) global.conn.ws.close()
   process.exit(0)
-})
+}
+process.on('SIGTERM', shutdown)
+process.on('SIGINT', shutdown)
