@@ -48,6 +48,11 @@ export async function handler(chatUpdate) {
         if (!('afkReason' in user)) user.afkReason = ''
         if (!('banned' in user)) user.banned = false
         if (!('name' in user)) user.name = m.name || ''
+        if (!isNumber(user.balance)) user.balance = 1000
+        if (!isNumber(user.bank)) user.bank = 0
+        if (!isNumber(user.exp)) user.exp = 0
+        if (!isNumber(user.lastClaim)) user.lastClaim = 0
+        if (!('role' in user)) user.role = 'Novice'
       } else {
         global.db.data.users[m.sender] = {
           warn: 0,
@@ -56,6 +61,11 @@ export async function handler(chatUpdate) {
           afk: -1,
           afkReason: '',
           banned: false,
+          balance: 1000,
+          bank: 0,
+          exp: 0,
+          lastClaim: 0,
+          role: 'Novice',
         }
       }
       
