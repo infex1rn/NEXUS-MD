@@ -73,6 +73,7 @@ global.db = firebaseDB
 
 global.loadDatabase = async function loadDatabase() {
   await global.db.read()
+  // Ensure database structure is initialized
   if (!global.db.data) global.db.data = {}
   if (!global.db.data.users) global.db.data.users = {}
   if (!global.db.data.chats) global.db.data.chats = {}
@@ -176,13 +177,14 @@ function getBrowserConfig() {
 // Note: This function references the module-level 'version' variable, so updates
 // to 'version' before calling this function will be reflected in the options
 function getConnectionOptions() {
+  // Permanent Bad MAC & Stability Fixes - Ensured Keys & History Sync Settings
   const options = {
     logger: pino({ level: 'fatal' }),
     printQRInTerminal: false,
     browser: getBrowserConfig(),
     auth: {
       creds: state.creds,
-      keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' }))
+      keys: makeCacheableSignalKeyStore(state.keys, MAIN_LOGGER.child({ level: 'fatal' }))
     },
     markOnlineOnConnect: true,
     generateHighQualityLinkPreview: true,
@@ -195,8 +197,13 @@ function getConnectionOptions() {
       return { conversation: '' }
     },
     msgRetryCounterCache,
+    // Permanent Bad MAC & Stability Fixes
     syncFullHistory: false,
-    shouldSyncHistoryMessage: () => false
+    shouldSyncHistoryMessage: () => false,
+    connectTimeoutMs: 60000,
+    defaultQueryTimeoutMs: 0,
+    keepAliveIntervalMs: 10000,
+    generateHighQualityLinkPreview: true
   }
   
   // Only include version if successfully fetched, otherwise let Baileys auto-detect

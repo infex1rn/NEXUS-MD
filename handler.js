@@ -37,10 +37,13 @@ export async function handler(chatUpdate) {
       }
     }
     
-    // Initialize user in database
+    // RPG Data Initialization (User & Chat)
     try {
+      // Initialize user in database
+      if (typeof global.db.data.users[m.sender] !== 'object') {
+        global.db.data.users[m.sender] = { balance: 1000 }
+      }
       let user = global.db.data.users[m.sender]
-      if (typeof user !== 'object') global.db.data.users[m.sender] = {}
       if (user) {
         if (!('warn' in user)) user.warn = 0
         if (!('registered' in user)) user.registered = false
@@ -53,26 +56,15 @@ export async function handler(chatUpdate) {
         if (!isNumber(user.exp)) user.exp = 0
         if (!isNumber(user.lastClaim)) user.lastClaim = 0
         if (!('role' in user)) user.role = 'Novice'
-      } else {
-        global.db.data.users[m.sender] = {
-          warn: 0,
-          registered: false,
-          name: m.name || '',
-          afk: -1,
-          afkReason: '',
-          banned: false,
-          balance: 1000,
-          bank: 0,
-          exp: 0,
-          lastClaim: 0,
-          role: 'Novice',
-        }
       }
       
       // Initialize chat in database
+      if (typeof global.db.data.chats[m.chat] !== 'object') {
+        global.db.data.chats[m.chat] = { active: false }
+      }
       let chat = global.db.data.chats[m.chat]
-      if (typeof chat !== 'object') global.db.data.chats[m.chat] = {}
       if (chat) {
+        if (!('active' in chat)) chat.active = false
         if (!('antiLink' in chat)) chat.antiLink = false
         if (!('isBanned' in chat)) chat.isBanned = false
         if (!('welcome' in chat)) chat.welcome = false
@@ -81,17 +73,6 @@ export async function handler(chatUpdate) {
         if (!('sPromote' in chat)) chat.sPromote = ''
         if (!('sDemote' in chat)) chat.sDemote = ''
         if (!('detect' in chat)) chat.detect = false
-      } else {
-        global.db.data.chats[m.chat] = {
-          antiLink: false,
-          isBanned: false,
-          welcome: false,
-          sWelcome: '',
-          sBye: '',
-          sPromote: '',
-          sDemote: '',
-          detect: false,
-        }
       }
       
       // Initialize settings
@@ -127,6 +108,17 @@ export async function handler(chatUpdate) {
       .includes(m.sender)
     const isOwner = isROwner || m.fromMe
     const isMods = isOwner || global.mods.map(v => v.replace(/[^0-9]/g, '') + '@s.whatsapp.net').includes(m.sender)
+
+    // Group Activation System (Middleware)
+    if (m.isGroup) {
+      let chat = global.db.data.chats[m.chat]
+      // Silent Mode: Ignore all commands except activation if group is not active
+      if (chat && !chat.active && !isOwner) {
+        // Safety check for m.text and ensure it starts with the activation command
+        const activationCmd = '.bot group on 1234'
+        if (!m.text || !m.text.toLowerCase().startsWith(activationCmd)) return
+      }
+    }
 
     // Private mode check
     if (process.env.MODE && process.env.MODE.toLowerCase() === 'private' && !(isROwner || isOwner)) return

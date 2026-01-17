@@ -78,9 +78,10 @@ function sendJSON(res, data, status = 200) {
 
 /**
  * Create and start the web server
+ * Listens on 0.0.0.0 and process.env.PORT || 10000
  */
 export function createServer(conn, requestPairingCode) {
-  const PORT = process.env.PORT || 10000
+  const PORT = parseInt(process.env.PORT) || 10000
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://localhost:${PORT}`)
@@ -96,7 +97,7 @@ export function createServer(conn, requestPairingCode) {
     // Health check for Render
     if (pathname === '/health' || pathname === '/') {
       // Both / and /health serve as health checks for Render
-      if (pathname === '/health') {
+      if (pathname === '/health' || (pathname === '/' && req.headers['user-agent']?.includes('Render'))) {
         return sendJSON(res, {
           status: 'ok',
           bot: process.env.BOTNAME || 'NEXUS-MD',
@@ -115,9 +116,10 @@ export function createServer(conn, requestPairingCode) {
     serveStatic(req, res, pathname)
   })
 
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n🌐 Web Dashboard: http://0.0.0.0:${PORT}`)
-    console.log(`📱 Pairing Page: http://0.0.0.0:${PORT}/#pair\n`)
+  const HOST = '0.0.0.0'
+  server.listen(PORT, HOST, () => {
+    console.log(`\n🌐 Web Dashboard: http://${HOST}:${PORT}`)
+    console.log(`📱 Pairing Page: http://${HOST}:${PORT}/#pair\n`)
   })
 
   return server
