@@ -94,17 +94,13 @@ export function createServer(conn, requestPairingCode) {
       return
     }
 
-    // Health check for Render
+    // Health check for Render - MUST respond 200 OK immediately
     if (pathname === '/health' || pathname === '/') {
-      // Both / and /health serve as health checks for Render
-      if (pathname === '/health' || (pathname === '/' && req.headers['user-agent']?.includes('Render'))) {
-        return sendJSON(res, {
-          status: 'ok',
-          bot: process.env.BOTNAME || 'NEXUS-MD',
-          timestamp: new Date().toISOString()
-        })
+      if (pathname === '/health' || (pathname === '/' && (req.headers['user-agent']?.includes('Render') || req.headers['x-render-ping']))) {
+        res.writeHead(200, { 'Content-Type': 'text/plain', ...CORS_HEADERS })
+        res.end('OK')
+        return
       }
-      // For /, we continue to serve static files (dashboard) which also returns 200 OK
     }
 
     // API Routes

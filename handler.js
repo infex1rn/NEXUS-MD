@@ -558,5 +558,5 @@ let file = global.__filename(import.meta.url, true)
 watchFile(file, async () => {
   unwatchFile(file)
   console.log(chalk.redBright('Update handler.js'))
-  if (global.reloadHandler) console.log(await global.reloadHandler())
+  if (global.reloadHandler) await global.reloadHandler()
 })
