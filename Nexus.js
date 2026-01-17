@@ -73,13 +73,11 @@ global.db = firebaseDB
 
 global.loadDatabase = async function loadDatabase() {
   await global.db.read()
-  global.db.data = {
-    users: {},
-    chats: {},
-    settings: {},
-    stats: {},
-    ...(global.db.data || {})
-  }
+  if (!global.db.data) global.db.data = {}
+  if (!global.db.data.users) global.db.data.users = {}
+  if (!global.db.data.chats) global.db.data.chats = {}
+  if (!global.db.data.settings) global.db.data.settings = {}
+  if (!global.db.data.stats) global.db.data.stats = {}
 }
 
 await global.loadDatabase()
@@ -197,7 +195,8 @@ function getConnectionOptions() {
       return { conversation: '' }
     },
     msgRetryCounterCache,
-    syncFullHistory: false
+    syncFullHistory: false,
+    shouldSyncHistoryMessage: () => false
   }
   
   // Only include version if successfully fetched, otherwise let Baileys auto-detect
@@ -577,3 +576,17 @@ await global.reloadHandler()
 // Handle uncaught exceptions
 process.on('uncaughtException', console.error)
 process.on('unhandledRejection', console.error)
+
+// Graceful shutdown handler for Render
+process.on('SIGTERM', async () => {
+  console.log(chalk.yellow('\n[INFO] SIGTERM received. Saving database...'))
+  if (global.db.data) {
+    try {
+      await global.db.write()
+      console.log(chalk.green('[SUCCESS] Database saved successfully.'))
+    } catch (e) {
+      console.error(chalk.red('[ERROR] Failed to save database on shutdown:'), e)
+    }
+  }
+  process.exit(0)
+})
