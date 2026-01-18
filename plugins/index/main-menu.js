@@ -113,7 +113,8 @@ let handler = async (m, { conn, usedPrefix }) => {
     
     let categoryBody = ''
     for (const { cmd, help } of cmds) {
-      categoryBody += `${toMono(help.toUpperCase())}\n`
+      const displayHelp = (typeof help === 'string' ? help : cmd.toString()).toUpperCase()
+      categoryBody += `${toMono(displayHelp)}\n`
     }
     
     menuText += formatMessage(toSmallCaps(name), categoryBody.trim()) + '\n\n'

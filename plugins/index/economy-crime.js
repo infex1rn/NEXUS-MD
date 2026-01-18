@@ -91,7 +91,7 @@ ${CURRENCY.symbol} *Loot:* +${formatMoney(earnings)}
 
 handler.help = ['crime']
 handler.tags = ['economy']
-handler.command = ['crime', 'rob', 'steal']
+handler.command = ['crime', 'steal']
 handler.desc = 'Commit crime for money (risky!)'
 
 export default handler
