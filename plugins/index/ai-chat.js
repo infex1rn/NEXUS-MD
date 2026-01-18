@@ -3,6 +3,7 @@
  * Chat with AI (persistent conversation history via database)
  */
 import fetch from 'node-fetch'
+import { createProgressBar } from '../../lib/progress.js'
 
 const MAX_HISTORY = 5
 
@@ -32,12 +33,16 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     throw `*Please provide a message!*\n\nExample: *${usedPrefix}${command} Hello, how are you?*\n\n*Commands:*\n- *${usedPrefix}gpt* <message> - Chat with AI\n- *${usedPrefix}resetai* - Clear chat history`
   }
   
+  const pb = createProgressBar(conn, m, { title: 'AI Chat', successMsg: 'Response generated!' })
+
   try {
+    await pb.update(10, 'Thinking...')
     await m.react('🧠')
     await conn.sendPresenceUpdate('composing', m.chat)
     
     // Get history from database
     const conversationHistory = getConversationHistory(userId)
+    await pb.update(30, 'Retrieving conversation history...')
     
     // Build messages array with history
     const messages = [
@@ -56,8 +61,11 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     // For demo, provide helpful response template
     const demoResponse = `🤖 *NEXUS-AI Response*\n\nYour question: "${text}"\n\n_To enable AI responses, configure:_\n1. Get OpenAI API key\n2. Add OPENAI_API_KEY to .env\n3. Restart the bot\n\n*Or use free alternatives:*\n- HuggingFace API\n- Google AI (Gemini)\n- Anthropic Claude`
     
+    await pb.update(70, 'Generating response...')
+    await pb.update(90, 'Finalizing...')
     await m.reply(demoResponse)
     await m.react('✅')
+    await pb.finish(true)
     
     // Store in history (in database)
     conversationHistory.push({
@@ -73,7 +81,8 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     
   } catch (e) {
     await m.react('❌')
-    m.reply(`❌ Error: ${e.message}`)
+    console.error(e)
+    await pb.finish(false, e.message)
   }
 }
 

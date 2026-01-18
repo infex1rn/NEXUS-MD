@@ -4,13 +4,15 @@
  */
 import fetch from 'node-fetch'
 import yts from 'yt-search'
+import { createProgressBar } from '../../lib/progress.js'
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
   if (!text) throw `*Please provide a video name or URL!*\n\nExample: *${usedPrefix}${command} funny cat video*`
   
-  await m.reply('⏳ *Searching for video...* Please wait.')
+  const pb = createProgressBar(conn, m, { title: 'Video Downloader', successMsg: 'Video processed!' })
   
   try {
+    await pb.update(10, 'Searching for video...')
     // Check if it's a URL or search query
     const isUrl = /^https?:\/\//.test(text)
     
@@ -26,17 +28,25 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     } else {
       // Search YouTube
       const { videos } = await yts(text)
-      if (!videos || !videos.length) throw '*No videos found!*'
+      if (!videos || !videos.length) {
+        await pb.finish(false, 'No videos found!')
+        return
+      }
       
       const video = videos[0]
+      await pb.update(50, `Found: ${video.title}`)
+
       const caption = `🎬 *${video.title}*\n\n⏱️ Duration: ${video.timestamp}\n👁️ Views: ${formatNumber(video.views)}\n📺 Channel: ${video.author.name}\n🔗 URL: ${video.url}\n\n_Video download requires external API setup._`
       
+      await pb.update(80, 'Preparing response...')
       await conn.sendMessage(m.chat, {
         text: caption
       }, { quoted: m })
+      await pb.finish(true)
     }
   } catch (e) {
-    m.reply(`❌ Error: ${e.message || e}`)
+    console.error(e)
+    await pb.finish(false, e.message || e)
   }
 }
 
