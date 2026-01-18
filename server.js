@@ -95,8 +95,14 @@ export function createServer(conn, requestPairingCode) {
     }
 
     // Health check for Render - MUST respond 200 OK immediately
+    // Expanded to be more inclusive for various cloud platform pings
     if (pathname === '/health' || pathname === '/') {
-      if (pathname === '/health' || (pathname === '/' && (req.headers['user-agent']?.includes('Render') || req.headers['x-render-ping']))) {
+      if (
+        pathname === '/health' ||
+        req.headers['user-agent']?.includes('Render') ||
+        req.headers['x-render-ping'] ||
+        url.searchParams.has('health')
+      ) {
         res.writeHead(200, { 'Content-Type': 'text/plain', ...CORS_HEADERS })
         res.end('OK')
         return

@@ -114,7 +114,17 @@ function getConnectionOptions() {
     shouldSyncHistoryMessage: () => false,
     connectTimeoutMs: 60000,
     msgRetryCounterCache,
-    version: version || [2, 3000, 1015901307]
+    version: version || [2, 3100, 1015901307],
+    getMessage: async (key) => {
+      if (groupMetadataCache) {
+        const jid = key.remoteJid
+        const msg = await groupMetadataCache.get(key.id)
+        if (msg) return msg.message
+      }
+      return {
+        conversation: 'Hello'
+      }
+    }
   }
 }
 
