@@ -2,6 +2,8 @@
  * Main Command: Owner
  * Display bot owner information
  */
+import { formatMessage } from '../../lib/simple.js'
+
 let handler = async (m, { conn }) => {
   const owners = global.owner || []
   
@@ -9,14 +11,12 @@ let handler = async (m, { conn }) => {
     return m.reply('*No owners configured!*')
   }
   
-  let message = `👑 *NEXUS-MD BOT OWNERS*\n\n`
-  
+  let body = ''
   for (const [number, name] of owners) {
-    const jid = number.replace(/[^0-9]/g, '') + '@s.whatsapp.net'
-    message += `📱 *${name || 'Owner'}*\nwa.me/${number}\n\n`
+    body += `📱 *${name || 'Owner'}*\nwa.me/${number}\n\n`
   }
   
-  message += `_Contact the owner for queries or support!_`
+  let message = formatMessage('Bot Owners', body.trim(), 'Contact the owner for queries or support!')
   
   // Send owner contact(s)
   const contacts = owners.map(([number, name]) => [number, name || 'Bot Owner'])

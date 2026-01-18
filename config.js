@@ -45,6 +45,15 @@ global.done = '✅'
 global.error = '❌'
 global.xmoji = '🔥'
 
+// Decoration
+global.decor = {
+  header: '╭━━━〔 %title 〕━━━┈',
+  body: '┃',
+  footer: '╰━━━━━━━━━━━━━━┈',
+  line: '┃',
+  separator: '┃━━━━━━━━━━━━━━━━━━━━━'
+}
+
 // Limits
 global.multiplier = 69
 global.maxwarn = 3

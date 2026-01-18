@@ -2,6 +2,8 @@
  * Main Command: Ping
  * Check bot response time
  */
+import { formatMessage } from '../../lib/simple.js'
+
 let handler = async (m) => {
   const start = Date.now()
   
@@ -18,14 +20,12 @@ let handler = async (m) => {
   const uptime = formatUptime(process.uptime())
   const memUsed = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)
   
-  await m.reply(`
-🏓 *Pong!*
-
-⚡ *Response:* ${responseTime}ms
+  const body = `⚡ *Response:* ${responseTime}ms
 📊 *Status:* ${status}
 ⏱️ *Uptime:* ${uptime}
-💾 *Memory:* ${memUsed} MB
-`.trim())
+💾 *Memory:* ${memUsed} MB`
+
+  await m.reply(formatMessage('Pong!', body))
 }
 
 function formatUptime(seconds) {

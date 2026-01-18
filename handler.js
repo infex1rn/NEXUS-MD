@@ -1,4 +1,4 @@
-import { smsg } from './lib/simple.js'
+import { smsg, formatMessage } from './lib/simple.js'
 import { fileURLToPath } from 'url'
 import path, { join } from 'path'
 import { unwatchFile, watchFile } from 'fs'
@@ -105,7 +105,7 @@ export async function handler(chatUpdate) {
       botId,
       ...global.owner.map(([number]) => number)
     ]
-      .map(v => (v || '').replace(/[^0-9]/g, '') + '@s.whatsapp.net')
+      .map(v => this.decodeJid((v || '').replace(/[^0-9]/g, '') + '@s.whatsapp.net'))
       .includes(m.sender)
     const isOwner = isROwner || m.fromMe
     const isMods = isOwner || global.mods.map(v => v.replace(/[^0-9]/g, '') + '@s.whatsapp.net').includes(m.sender)
@@ -127,15 +127,15 @@ export async function handler(chatUpdate) {
 
     // Group/participant context
     let usedPrefix
-    const groupMetadata = (m.isGroup
-      ? (conn.chats[m.chat] || {}).metadata || (await this.groupMetadata(m.chat).catch(_ => null))
+    let groupMetadata = (m.isGroup
+      ? (this.chats[m.chat] || {}).metadata || (await this.groupMetadata(m.chat).catch(_ => null))
       : {}) || {}
-    const participants = (m.isGroup ? groupMetadata.participants : []) || []
-    const user = (m.isGroup ? participants.find(u => conn.decodeJid(u.id) === m.sender) : {}) || {}
-    const bot = (m.isGroup ? participants.find(u => conn.decodeJid(u.id) == this.decodeJid(this.user?.id)) : {}) || {}
-    const isRAdmin = user?.admin == 'superadmin' || false
-    const isAdmin = isRAdmin || user?.admin == 'admin' || false
-    const isBotAdmin = bot?.admin || false
+    let participants = (m.isGroup ? groupMetadata.participants : []) || []
+    let user = (m.isGroup ? participants.find(u => this.decodeJid(u.id) === m.sender) : {}) || {}
+    let bot = (m.isGroup ? participants.find(u => this.decodeJid(u.id) == this.decodeJid(this.user?.id)) : {}) || {}
+    let isRAdmin = user?.admin == 'superadmin' || false
+    let isAdmin = isRAdmin || user?.admin == 'admin' || false
+    let isBotAdmin = bot?.admin || false
 
     // Plugin execution
     const ___dirname = path.join(path.dirname(fileURLToPath(import.meta.url)), './plugins/index')
@@ -162,7 +162,7 @@ export async function handler(chatUpdate) {
       
       // Build prefix matcher
       const str2Regex = str => str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&')
-      let _prefix = plugin.customPrefix ? plugin.customPrefix : conn.prefix ? conn.prefix : global.prefix
+      let _prefix = plugin.customPrefix ? plugin.customPrefix : this.prefix ? this.prefix : global.prefix
       let match = (
         _prefix instanceof RegExp
           ? [[_prefix.exec(m.text), _prefix]]
@@ -255,11 +255,29 @@ export async function handler(chatUpdate) {
           fail('group', m, this)
           continue
         } else if (plugin.botAdmin && !isBotAdmin) {
-          fail('botAdmin', m, this)
-          continue
+          // Force refresh metadata to be sure
+          groupMetadata = await this.groupMetadata(m.chat).catch(_ => ({}))
+          participants = groupMetadata.participants || []
+          bot = participants.find(u => this.decodeJid(u.id) == this.decodeJid(this.user?.id)) || {}
+          isBotAdmin = (bot?.admin === 'admin' || bot?.admin === 'superadmin')
+          if (this.chats[m.chat]) this.chats[m.chat].metadata = groupMetadata
+
+          if (!isBotAdmin) {
+            fail('botAdmin', m, this)
+            continue
+          }
         } else if (plugin.admin && !isAdmin) {
-          fail('admin', m, this)
-          continue
+          // Force refresh metadata to be sure
+          groupMetadata = await this.groupMetadata(m.chat).catch(_ => ({}))
+          participants = groupMetadata.participants || []
+          user = participants.find(u => this.decodeJid(u.id) === m.sender) || {}
+          isAdmin = (user?.admin === 'admin' || user?.admin === 'superadmin')
+          if (this.chats[m.chat]) this.chats[m.chat].metadata = groupMetadata
+
+          if (!isAdmin) {
+            fail('admin', m, this)
+            continue
+          }
         }
         if (plugin.private && m.isGroup) {
           fail('private', m, this)
@@ -306,7 +324,7 @@ export async function handler(chatUpdate) {
         } catch (e) {
           m.error = e
           console.error(e)
-          m.reply(`❌ Error: ${e.message || e}`)
+          m.reply(formatMessage('Error', `❌ *Oops!* Something went wrong.\n\n📝 *Reason:* ${e.message || e}`))
         } finally {
           if (typeof plugin.after === 'function') {
             try {
@@ -346,7 +364,7 @@ export async function handler(chatUpdate) {
     }
 
     // Auto-read if enabled
-    if (process.env.autoRead === 'true') await conn.readMessages([m.key])
+    if (process.env.autoRead === 'true') await this.readMessages([m.key])
   }
 }
 
@@ -355,9 +373,15 @@ export async function handler(chatUpdate) {
  */
 export async function participantsUpdate({ id, participants, action }) {
   if (global.opts['self'] || this.isInit) return
-  if (global.db.data == null) await loadDatabase()
+  if (global.db.data == null) await global.loadDatabase()
   
   const chat = global.db.data.chats[id] || {}
+
+  // Update group metadata cache
+  if (this.chats[id]) {
+    const metadata = await this.groupMetadata(id).catch(_ => null)
+    if (metadata) this.chats[id].metadata = metadata
+  }
 
   switch (action) {
     case 'add':
@@ -371,7 +395,7 @@ export async function participantsUpdate({ id, participants, action }) {
             pp = 'https://i.imgur.com/8B4jwGq.jpeg'
           }
           
-          let text = (chat.sWelcome || this.welcome || conn.welcome || 'Welcome, @user!')
+          let text = (chat.sWelcome || this.welcome || 'Welcome, @user!')
             .replace('@group', groupMetadata.subject || '')
             .replace('@desc', groupMetadata.desc?.toString() || '')
             .replace('@user', '@' + user.split('@')[0])
@@ -388,7 +412,7 @@ export async function participantsUpdate({ id, participants, action }) {
       if (chat.welcome) {
         let groupMetadata = await this.groupMetadata(id).catch(_ => null) || {}
         for (let user of participants) {
-          let text = (chat.sBye || this.bye || conn.bye || 'Goodbye, @user!')
+          let text = (chat.sBye || this.bye || 'Goodbye, @user!')
             .replace('@user', '@' + user.split('@')[0])
 
           this.sendMessage(id, {
@@ -401,7 +425,7 @@ export async function participantsUpdate({ id, participants, action }) {
       
     case 'promote':
       if (chat.detect) {
-        const promoteText = (chat.sPromote || this.spromote || conn.spromote || '*@user* is now admin!')
+        const promoteText = (chat.sPromote || this.spromote || '*@user* is now admin!')
           .replace('@user', '@' + participants[0].split('@')[0])
         this.sendMessage(id, { text: promoteText, mentions: [participants[0]] })
       }
@@ -409,7 +433,7 @@ export async function participantsUpdate({ id, participants, action }) {
       
     case 'demote':
       if (chat.detect) {
-        const demoteText = (chat.sDemote || this.sdemote || conn.sdemote || '*@user* is no longer admin.')
+        const demoteText = (chat.sDemote || this.sdemote || '*@user* is no longer admin.')
           .replace('@user', '@' + participants[0].split('@')[0])
         this.sendMessage(id, { text: demoteText, mentions: [participants[0]] })
       }
@@ -426,6 +450,12 @@ export async function groupsUpdate(groupsUpdate) {
   for (const groupUpdate of groupsUpdate) {
     const id = groupUpdate.id
     if (!id) continue
+
+    // Update group metadata cache
+    if (this.chats[id]) {
+      const metadata = await this.groupMetadata(id).catch(_ => null)
+      if (metadata) this.chats[id].metadata = metadata
+    }
     
     let chats = global.db.data.chats[id] || {}
     if (!chats.detect) continue
@@ -511,55 +541,13 @@ global.dfail = (type, m, conn) => {
   const userTag = `*@${m.sender.split('@')[0]}*`
   
   const msg = {
-    owner: `╭━━━〔 *ACCESS DENIED* 〕━━━┈
-┃
-┃ 👑 Hey ${userTag},
-┃ This command is only for
-┃ the *Bot Owner*!
-┃
-╰━━━━━━━━━━━━━━┈`,
-    rowner: `╭━━━〔 *ACCESS DENIED* 〕━━━┈
-┃
-┃ 🛡️ Hey ${userTag},
-┃ This command is for the
-┃ *Real Owner* only!
-┃
-╰━━━━━━━━━━━━━━┈`,
-    mods: `╭━━━〔 *ACCESS DENIED* 〕━━━┈
-┃
-┃ 🛠️ Hey ${userTag},
-┃ This command is only for
-┃ *Moderators*!
-┃
-╰━━━━━━━━━━━━━━┈`,
-    group: `╭━━━〔 *NOTICE* 〕━━━┈
-┃
-┃ 👥 Hey ${userTag},
-┃ This command can only be
-┃ used in *Groups*!
-┃
-╰━━━━━━━━━━━━━━┈`,
-    private: `╭━━━〔 *NOTICE* 〕━━━┈
-┃
-┃ 👤 Hey ${userTag},
-┃ This command can only be
-┃ used in *Private Chats*!
-┃
-╰━━━━━━━━━━━━━━┈`,
-    admin: `╭━━━〔 *ACCESS DENIED* 〕━━━┈
-┃
-┃ 👮 Hey ${userTag},
-┃ This command is only for
-┃ *Group Admins*!
-┃
-╰━━━━━━━━━━━━━━┈`,
-    botAdmin: `╭━━━〔 *ACCESS DENIED* 〕━━━┈
-┃
-┃ 🤖 Hey ${userTag},
-┃ Please make the bot an
-┃ *Admin* to use this!
-┃
-╰━━━━━━━━━━━━━━┈`,
+    owner: formatMessage('Access Denied', `👑 Hey ${userTag},\nThis command is only for the *Bot Owner*!`),
+    rowner: formatMessage('Access Denied', `🛡️ Hey ${userTag},\nThis command is for the *Real Owner* only!`),
+    mods: formatMessage('Access Denied', `🛠️ Hey ${userTag},\nThis command is only for *Moderators*!`),
+    group: formatMessage('Notice', `👥 Hey ${userTag},\nThis command can only be used in *Groups*!`),
+    private: formatMessage('Notice', `👤 Hey ${userTag},\nThis command can only be used in *Private Chats*!`),
+    admin: formatMessage('Access Denied', `👮 Hey ${userTag},\nThis command is only for *Group Admins*!`),
+    botAdmin: formatMessage('Access Denied', `🤖 Hey ${userTag},\nPlease make the bot an *Admin* to use this!`),
   }[type]
   
   if (msg) return m.reply(msg, null, { mentions: [m.sender] })

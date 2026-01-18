@@ -2,28 +2,22 @@
  * Main Command: Alive
  * Check if bot is online
  */
+import { formatMessage } from '../../lib/simple.js'
+
 let handler = async (m, { conn }) => {
   const uptime = formatUptime(process.uptime())
   const memUsed = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)
   const totalPlugins = Object.keys(global.plugins || {}).length
   
-  const message = `
-╭━━━━━━━━━━━━━━━━━━━━━╮
-┃  🤖 *NEXUS-MD IS ALIVE*
-┃━━━━━━━━━━━━━━━━━━━━━
-┃
-┃  ⏱️ *Uptime:* ${uptime}
-┃  💾 *Memory:* ${memUsed} MB
-┃  🔌 *Plugins:* ${totalPlugins}
-┃  📅 *Date:* ${new Date().toLocaleDateString()}
-┃  ⏰ *Time:* ${new Date().toLocaleTimeString()}
-┃
-┃  📋 Type *.menu* for commands
-┃
-╰━━━━━━━━━━━━━━━━━━━━━╯
+  const body = `⏱️ *Uptime:* ${uptime}
+💾 *Memory:* ${memUsed} MB
+🔌 *Plugins:* ${totalPlugins}
+📅 *Date:* ${new Date().toLocaleDateString()}
+⏰ *Time:* ${new Date().toLocaleTimeString()}
 
-_🚀 Running on Node.js ${process.version}_
-`.trim()
+📋 Type *.menu* for commands`
+
+  const message = formatMessage('NEXUS-MD IS ALIVE', body, `Running on Node.js ${process.version}`)
   
   await m.reply(message)
 }

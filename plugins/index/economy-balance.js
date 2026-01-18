@@ -3,6 +3,7 @@
  * Check wallet and bank balance
  */
 import { initUserEconomy, formatMoney, calculateLevel, xpForLevel, CURRENCY } from '../../lib/economy.js'
+import { formatMessage } from '../../lib/simple.js'
 
 let handler = async (m, { conn }) => {
   const user = global.db.data.users[m.sender]
@@ -12,16 +13,10 @@ let handler = async (m, { conn }) => {
   const progress = Math.round((economy.exp / nextLevelXp) * 100)
   const progressBar = generateProgressBar(progress)
   
-  const balanceText = `
-╭━━━━━━━━━━━━━━━━━━━━━╮
-┃  ${CURRENCY.emoji} *NEXUS WALLET*
-┃━━━━━━━━━━━━━━━━━━━━━
-┃  👤 *${user.name || m.sender.split('@')[0]}*
-╰━━━━━━━━━━━━━━━━━━━━━╯
+  const body = `👤 *User:* ${user.name || m.sender.split('@')[0]}
 
 💵 *Wallet:* ${formatMoney(economy.wallet)}
 🏦 *Bank:* ${formatMoney(economy.bank)}
-━━━━━━━━━━━━━━━━━━
 💎 *Total:* ${formatMoney(economy.wallet + economy.bank)}
 
 📊 *Level:* ${economy.level}
@@ -32,12 +27,9 @@ ${progressBar} ${progress}%
 ├ Total Earned: ${formatMoney(economy.totalEarned)}
 ├ Total Spent: ${formatMoney(economy.totalSpent)}
 ├ Work Count: ${economy.workCount}
-└ Current Streak: 🔥 ${economy.streak} day(s)
+└ Current Streak: 🔥 ${economy.streak} day(s)`
 
-_Use .help economy for more commands_
-`.trim()
-
-  await m.reply(balanceText)
+  await m.reply(formatMessage(`${CURRENCY.emoji} NEXUS WALLET`, body, 'Use .help economy for more commands'))
 }
 
 function generateProgressBar(percent, length = 10) {
