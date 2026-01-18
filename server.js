@@ -30,7 +30,7 @@ export { pairingState }
  */
 export function createServer(conn, requestPairingCode) {
   const app = express()
-  const PORT = parseInt(process.env.PORT) || 10000
+  const PORT = parseInt(process.env.PORT) || 3000
 
   // Middleware
   app.use(express.json())

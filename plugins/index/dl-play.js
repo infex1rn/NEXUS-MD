@@ -4,6 +4,7 @@
  */
 import fetch from 'node-fetch'
 import yts from 'yt-search'
+import { createProgressBar } from '../../lib/progress.js'
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
   if (!text) throw `*Please provide a song name!*\n\nExample: *${usedPrefix}${command} shape of you*`
@@ -52,16 +53,21 @@ handler.before = async (m, { conn }) => {
     
     const selected = results[inputNumber - 1]
     
+    const pb = createProgressBar(conn, m, { title: 'Downloading Audio', successMsg: 'Audio sent successfully!' })
+
     try {
-      await m.reply(`⏳ *Downloading:* ${selected.title}\n\n_Please wait, this may take a moment..._`)
+      await pb.update(10, 'Initializing download...')
       
       const apiUrl = `https://ironman.koyeb.app/ironman/dl/yta?url=${encodeURIComponent(selected.url)}`
       
+      await pb.update(30, 'Fetching data from API...')
       const response = await fetch(apiUrl)
       if (!response.ok) throw new Error(`API responded with status: ${response.status}`)
 
+      await pb.update(60, 'Processing audio buffer...')
       const buffer = await response.buffer()
       
+      await pb.update(90, 'Sending audio file...')
       await conn.sendMessage(m.chat, {
         audio: buffer,
         mimetype: 'audio/mpeg',
@@ -69,8 +75,10 @@ handler.before = async (m, { conn }) => {
         fileName: `${selected.title}.mp3`
       }, { quoted: m })
       
+      await pb.finish(true)
     } catch (error) {
-      m.reply(`❌ Error downloading: ${error.message}`)
+      console.error(error)
+      await pb.finish(false, error.message)
     } finally {
       delete conn.NEXUSPLAY[m.sender]
     }
