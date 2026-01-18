@@ -2,6 +2,8 @@
  * Utility Command: Profile/User Info
  * Get user profile information
  */
+import { formatMessage } from '../../lib/simple.js'
+
 let handler = async (m, { conn }) => {
   let who = m.quoted ? m.quoted.sender : m.mentionedJid?.[0] || m.sender
   
@@ -16,10 +18,7 @@ let handler = async (m, { conn }) => {
     const user = global.db.data.users[who] || {}
     const name = await conn.getName(who)
     
-    const message = `
-👤 *USER PROFILE*
-
-📛 *Name:* ${name}
+    const body = `📛 *Name:* ${name}
 🆔 *JID:* ${who}
 📱 *Number:* ${who.split('@')[0]}
 
@@ -27,10 +26,9 @@ let handler = async (m, { conn }) => {
 • Registered: ${user.registered ? '✅' : '❎'}
 • Warnings: ${user.warn || 0}/${global.maxwarn || 3}
 • Banned: ${user.banned ? '🚫 Yes' : '✅ No'}
-• AFK: ${user.afk > -1 ? '💤 Yes' : '✅ No'}
+• AFK: ${user.afk > -1 ? '💤 Yes' : '✅ No'}`
 
-_Profile picture may not be available due to privacy settings_
-`.trim()
+    const message = formatMessage('User Profile', body, 'Profile picture may not be available due to privacy settings')
     
     await conn.sendMessage(m.chat, {
       image: { url: pp },

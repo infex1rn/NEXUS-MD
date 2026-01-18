@@ -2,6 +2,8 @@
  * Main Command: Menu
  * Display all available commands
  */
+import { formatMessage } from '../../lib/simple.js'
+
 let handler = async (m, { conn, usedPrefix }) => {
   const plugins = global.plugins || {}
   const commands = {}
@@ -61,17 +63,13 @@ let handler = async (m, { conn, usedPrefix }) => {
   const minutes = Math.floor((uptime % 3600) / 60)
   const runtime = `${hours}h ${minutes}m`
 
-  let menuText = `╭━━━〔 *NEXUS-MD* 〕━━━┈
-┃
-┃ 🤖 *BOT:* Nexus-MD Premium
-┃ 👤 *USER:* @${m.sender.split('@')[0]}
-┃ 🚀 *RUNTIME:* ${runtime}
-┃ 📊 *COMMANDS:* ${Object.values(commands).flat().length}
-┃ 📍 *PREFIX:* [ ${usedPrefix} ]
-┃
-╰━━━━━━━━━━━━━━━━━━━┈
+  let menuHeader = `🤖 *BOT:* Nexus-MD Premium
+👤 *USER:* @${m.sender.split('@')[0]}
+🚀 *RUNTIME:* ${runtime}
+📊 *COMMANDS:* ${Object.values(commands).flat().length}
+📍 *PREFIX:* [ ${usedPrefix} ]`
 
-`
+  let menuText = formatMessage('Nexus-MD', menuHeader) + '\n\n'
 
   // Sort categories
   const sortOrder = ['main', 'economy', 'casino', 'cards', 'group', 'downloader', 'sticker', 'tools', 'fun', 'utility', 'owner', 'other']
@@ -88,26 +86,17 @@ let handler = async (m, { conn, usedPrefix }) => {
     const emoji = categoryEmoji[category] || '📦'
     const name = categoryNames[category] || category.toUpperCase()
     
-    menuText += `╭━━━〔 ${emoji} *${name}* 〕━━━┈\n┃\n`
-    
+    let categoryBody = ''
     for (const { cmd, help } of cmds) {
-      menuText += `┃ ◦ ${usedPrefix}${help}\n`
+      categoryBody += `◦ ${usedPrefix}${help}\n`
     }
     
-    menuText += `┃\n╰━━━━━━━━━━━━━━━━━━━┈\n\n`
+    menuText += formatMessage(`${emoji} ${name}`, categoryBody.trim()) + '\n\n'
   }
   
-  menuText += `
-╭━━━〔 *INFO* 〕━━━┈
-┃
-┃ 💡 *Tips:*
-┃ • Type command for help
-┃ • Example: ${usedPrefix}sticker
-┃
-╰━━━━━━━━━━━━━━┈
-
-_Powered by NEXUS-MD Bot_
-`.trim()
+  menuText += formatMessage('Info', `💡 *Tips:*
+• Type command for help
+• Example: ${usedPrefix}sticker`, 'Powered by NEXUS-MD Bot')
   
   await m.reply(menuText)
 }

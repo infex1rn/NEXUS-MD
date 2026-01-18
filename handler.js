@@ -1,4 +1,4 @@
-import { smsg } from './lib/simple.js'
+import { smsg, formatMessage } from './lib/simple.js'
 import { fileURLToPath } from 'url'
 import path, { join } from 'path'
 import { unwatchFile, watchFile } from 'fs'
@@ -324,7 +324,7 @@ export async function handler(chatUpdate) {
         } catch (e) {
           m.error = e
           console.error(e)
-          m.reply(`❌ Error: ${e.message || e}`)
+          m.reply(formatMessage('Error', `❌ *Oops!* Something went wrong.\n\n📝 *Reason:* ${e.message || e}`))
         } finally {
           if (typeof plugin.after === 'function') {
             try {
@@ -541,55 +541,13 @@ global.dfail = (type, m, conn) => {
   const userTag = `*@${m.sender.split('@')[0]}*`
   
   const msg = {
-    owner: `╭━━━〔 *ACCESS DENIED* 〕━━━┈
-┃
-┃ 👑 Hey ${userTag},
-┃ This command is only for
-┃ the *Bot Owner*!
-┃
-╰━━━━━━━━━━━━━━┈`,
-    rowner: `╭━━━〔 *ACCESS DENIED* 〕━━━┈
-┃
-┃ 🛡️ Hey ${userTag},
-┃ This command is for the
-┃ *Real Owner* only!
-┃
-╰━━━━━━━━━━━━━━┈`,
-    mods: `╭━━━〔 *ACCESS DENIED* 〕━━━┈
-┃
-┃ 🛠️ Hey ${userTag},
-┃ This command is only for
-┃ *Moderators*!
-┃
-╰━━━━━━━━━━━━━━┈`,
-    group: `╭━━━〔 *NOTICE* 〕━━━┈
-┃
-┃ 👥 Hey ${userTag},
-┃ This command can only be
-┃ used in *Groups*!
-┃
-╰━━━━━━━━━━━━━━┈`,
-    private: `╭━━━〔 *NOTICE* 〕━━━┈
-┃
-┃ 👤 Hey ${userTag},
-┃ This command can only be
-┃ used in *Private Chats*!
-┃
-╰━━━━━━━━━━━━━━┈`,
-    admin: `╭━━━〔 *ACCESS DENIED* 〕━━━┈
-┃
-┃ 👮 Hey ${userTag},
-┃ This command is only for
-┃ *Group Admins*!
-┃
-╰━━━━━━━━━━━━━━┈`,
-    botAdmin: `╭━━━〔 *ACCESS DENIED* 〕━━━┈
-┃
-┃ 🤖 Hey ${userTag},
-┃ Please make the bot an
-┃ *Admin* to use this!
-┃
-╰━━━━━━━━━━━━━━┈`,
+    owner: formatMessage('Access Denied', `👑 Hey ${userTag},\nThis command is only for the *Bot Owner*!`),
+    rowner: formatMessage('Access Denied', `🛡️ Hey ${userTag},\nThis command is for the *Real Owner* only!`),
+    mods: formatMessage('Access Denied', `🛠️ Hey ${userTag},\nThis command is only for *Moderators*!`),
+    group: formatMessage('Notice', `👥 Hey ${userTag},\nThis command can only be used in *Groups*!`),
+    private: formatMessage('Notice', `👤 Hey ${userTag},\nThis command can only be used in *Private Chats*!`),
+    admin: formatMessage('Access Denied', `👮 Hey ${userTag},\nThis command is only for *Group Admins*!`),
+    botAdmin: formatMessage('Access Denied', `🤖 Hey ${userTag},\nPlease make the bot an *Admin* to use this!`),
   }[type]
   
   if (msg) return m.reply(msg, null, { mentions: [m.sender] })
