@@ -11,9 +11,13 @@ const isNumber = x => typeof x === 'number' && !isNaN(x)
  */
 export async function handler(chatUpdate) {
   this.msgqueue = this.msgqueue || []
-  if (!chatUpdate) return
+  if (!chatUpdate || !chatUpdate.messages) return
   
-  this.pushMessage(chatUpdate.messages).catch(console.error)
+  try {
+    this.pushMessage(chatUpdate.messages).catch(console.error)
+  } catch (e) {
+    console.error('Error pushing message to queue:', e)
+  }
   
   let m = chatUpdate.messages[chatUpdate.messages.length - 1]
   if (!m) return
@@ -23,7 +27,11 @@ export async function handler(chatUpdate) {
   let settings = global.db?.data?.settings?.[this.decodeJid(this.user?.id)] || {}
   
   try {
-    m = smsg(this, m) || m
+    try {
+      m = smsg(this, m) || m
+    } catch (e) {
+      console.error('Error serializing message:', e)
+    }
     if (!m) return
     
     // Handle button responses
@@ -38,45 +46,45 @@ export async function handler(chatUpdate) {
     }
     
     // RPG Data Initialization (User & Chat)
+    const botJid = this.decodeJid(this.user?.id) || ''
     try {
       // Initialize user in database
       if (typeof global.db.data.users[m.sender] !== 'object') {
         global.db.data.users[m.sender] = { balance: 1000 }
       }
-      let user = global.db.data.users[m.sender]
-      if (user) {
-        if (!('warn' in user)) user.warn = 0
-        if (!('registered' in user)) user.registered = false
-        if (!isNumber(user.afk)) user.afk = -1
-        if (!('afkReason' in user)) user.afkReason = ''
-        if (!('banned' in user)) user.banned = false
-        if (!('name' in user)) user.name = m.name || ''
-        if (!isNumber(user.balance)) user.balance = 1000
-        if (!isNumber(user.bank)) user.bank = 0
-        if (!isNumber(user.exp)) user.exp = 0
-        if (!isNumber(user.lastClaim)) user.lastClaim = 0
-        if (!('role' in user)) user.role = 'Novice'
+      let dbUser = global.db.data.users[m.sender]
+      if (dbUser) {
+        if (!('warn' in dbUser)) dbUser.warn = 0
+        if (!('registered' in dbUser)) dbUser.registered = false
+        if (!isNumber(dbUser.afk)) dbUser.afk = -1
+        if (!('afkReason' in dbUser)) dbUser.afkReason = ''
+        if (!('banned' in dbUser)) dbUser.banned = false
+        if (!('name' in dbUser)) dbUser.name = m.name || ''
+        if (!isNumber(dbUser.balance)) dbUser.balance = 1000
+        if (!isNumber(dbUser.bank)) dbUser.bank = 0
+        if (!isNumber(dbUser.exp)) dbUser.exp = 0
+        if (!isNumber(dbUser.lastClaim)) dbUser.lastClaim = 0
+        if (!('role' in dbUser)) dbUser.role = 'Novice'
       }
       
       // Initialize chat in database
       if (typeof global.db.data.chats[m.chat] !== 'object') {
         global.db.data.chats[m.chat] = { active: false }
       }
-      let chat = global.db.data.chats[m.chat]
-      if (chat) {
-        if (!('active' in chat)) chat.active = false
-        if (!('antiLink' in chat)) chat.antiLink = false
-        if (!('isBanned' in chat)) chat.isBanned = false
-        if (!('welcome' in chat)) chat.welcome = false
-        if (!('sWelcome' in chat)) chat.sWelcome = ''
-        if (!('sBye' in chat)) chat.sBye = ''
-        if (!('sPromote' in chat)) chat.sPromote = ''
-        if (!('sDemote' in chat)) chat.sDemote = ''
-        if (!('detect' in chat)) chat.detect = false
+      let dbChat = global.db.data.chats[m.chat]
+      if (dbChat) {
+        if (!('active' in dbChat)) dbChat.active = false
+        if (!('antiLink' in dbChat)) dbChat.antiLink = false
+        if (!('isBanned' in dbChat)) dbChat.isBanned = false
+        if (!('welcome' in dbChat)) dbChat.welcome = false
+        if (!('sWelcome' in dbChat)) dbChat.sWelcome = ''
+        if (!('sBye' in dbChat)) dbChat.sBye = ''
+        if (!('sPromote' in dbChat)) dbChat.sPromote = ''
+        if (!('sDemote' in dbChat)) dbChat.sDemote = ''
+        if (!('detect' in dbChat)) dbChat.detect = false
       }
       
       // Initialize settings
-      const botJid = this.decodeJid(this.user?.id)
       settings = global.db.data.settings[botJid]
       if (typeof settings !== 'object') global.db.data.settings[botJid] = {}
       if (settings) {
@@ -100,7 +108,6 @@ export async function handler(chatUpdate) {
     if (typeof m.text !== 'string') m.text = ''
 
     // Permission Detection
-    const botJid = this.decodeJid(this.user?.id) || ''
     const senderNumber = m.sender.split('@')[0]
     const ownerNumbers = (global.owner || []).map(v => v.replace(/[^0-9]/g, ''))
     const modNumbers = (global.mods || []).map(v => v.replace(/[^0-9]/g, ''))
@@ -111,9 +118,9 @@ export async function handler(chatUpdate) {
 
     // Group Activation System (Middleware)
     if (m.isGroup) {
-      let chat = global.db.data.chats[m.chat]
+      let dbChat = global.db.data.chats[m.chat]
       // Silent Mode: Ignore all commands except activation if group is not active
-      if (chat && !chat.active && !isOwner) {
+      if (dbChat && !dbChat.active && !isOwner) {
         // Safety check for m.text and ensure it matches the activation command
         const activationCmd = '.bot group on 1234'
         if (!m.text || m.text.toLowerCase().trim() !== activationCmd) return
@@ -129,7 +136,8 @@ export async function handler(chatUpdate) {
     const groupMetadata = m.isGroup ? await this.groupMetadata(m.chat).catch(_ => ({})) : {}
     const participants = m.isGroup ? (groupMetadata.participants || []) : []
     const isBotAdmin = m.isGroup ? !!(participants.find(p => p.id === botJid)?.admin) : false
-    const isAdmin = m.isGroup ? !!(participants.find(p => p.id === m.sender)?.admin) : false
+    const isAdmin = m.isGroup ? !!(participants.find(p => p.id === (m.key.participant ?? m.sender))?.admin) : false
+    const isRAdmin = m.isGroup ? !!(participants.find(p => p.id === (m.key.participant ?? m.sender))?.admin === 'superadmin') : false
 
     // Plugin execution
     const ___dirname = path.join(path.dirname(fileURLToPath(import.meta.url)), './plugins/index')
@@ -178,8 +186,8 @@ export async function handler(chatUpdate) {
             conn: this,
             participants,
             groupMetadata,
-            user,
-            bot,
+            user: m.sender,
+            bot: botJid,
             isROwner,
             isOwner,
             isRAdmin,
@@ -223,9 +231,9 @@ export async function handler(chatUpdate) {
         // Check bans
         if (m.chat in global.db.data.chats || m.sender in global.db.data.users) {
           let chat = global.db.data.chats[m.chat]
-          let user = global.db.data.users[m.sender]
+          let dbUser = global.db.data.users[m.sender]
           if (name != 'owner-unbanchat.js' && chat?.isBanned) return
-          if (name != 'owner-unbanuser.js' && user?.banned) return
+          if (name != 'owner-unbanuser.js' && dbUser?.banned) return
         }
         
         // Permission checks (Order: Owner, Group, BotAdmin, Admin)
@@ -271,8 +279,8 @@ export async function handler(chatUpdate) {
           conn: this,
           participants,
           groupMetadata,
-          user,
-          bot,
+          user: m.sender,
+          bot: botJid,
           isROwner,
           isOwner,
           isRAdmin,
@@ -346,18 +354,19 @@ export async function handler(chatUpdate) {
  * Handle group participants update
  */
 export async function participantsUpdate({ id, participants, action }) {
-  if (global.opts['self'] || this.isInit) return
-  if (global.db.data == null) await global.loadDatabase()
-  
-  const chat = global.db.data.chats[id] || {}
+  try {
+    if (global.opts['self'] || this.isInit) return
+    if (global.db.data == null) await global.loadDatabase()
 
-  // Update group metadata cache
-  if (this.chats[id]) {
-    const metadata = await this.groupMetadata(id).catch(_ => null)
-    if (metadata) this.chats[id].metadata = metadata
-  }
+    const chat = global.db.data?.chats?.[id] || {}
 
-  switch (action) {
+    // Update group metadata cache
+    if (this.chats && this.chats[id]) {
+      const metadata = await this.groupMetadata(id).catch(_ => null)
+      if (metadata) this.chats[id].metadata = metadata
+    }
+
+    switch (action) {
     case 'add':
       if (chat.welcome) {
         let groupMetadata = await this.groupMetadata(id).catch(_ => null) || {}
@@ -411,7 +420,10 @@ export async function participantsUpdate({ id, participants, action }) {
           .replace('@user', '@' + participants[0].split('@')[0])
         this.sendMessage(id, { text: demoteText, mentions: [participants[0]] })
       }
-      break
+        break
+    }
+  } catch (e) {
+    console.error('Error in participantsUpdate:', e)
   }
 }
 
@@ -419,19 +431,20 @@ export async function participantsUpdate({ id, participants, action }) {
  * Handle groups update
  */
 export async function groupsUpdate(groupsUpdate) {
-  if (global.opts['self']) return
-  
-  for (const groupUpdate of groupsUpdate) {
-    const id = groupUpdate.id
-    if (!id) continue
-
-    // Update group metadata cache
-    if (this.chats[id]) {
-      const metadata = await this.groupMetadata(id).catch(_ => null)
-      if (metadata) this.chats[id].metadata = metadata
-    }
+  try {
+    if (global.opts['self']) return
     
-    let chats = global.db.data.chats[id] || {}
+    for (const groupUpdate of groupsUpdate) {
+      const id = groupUpdate.id
+      if (!id) continue
+
+      // Update group metadata cache
+      if (this.chats && this.chats[id]) {
+        const metadata = await this.groupMetadata(id).catch(_ => null)
+        if (metadata) this.chats[id].metadata = metadata
+      }
+
+      let chats = global.db.data?.chats?.[id] || {}
     if (!chats.detect) continue
 
     let text = ''
@@ -449,7 +462,10 @@ export async function groupsUpdate(groupsUpdate) {
       text = `*🔓 Group is now open!* All participants can send messages.`
     }
 
-    if (text) await this.sendMessage(id, { text })
+      if (text) await this.sendMessage(id, { text })
+    }
+  } catch (e) {
+    console.error('Error in groupsUpdate:', e)
   }
 }
 
@@ -474,19 +490,25 @@ export async function deleteUpdate(message) {
  * Handle presence update (for AFK)
  */
 export async function presenceUpdate(presenceUpdate) {
-  const id = presenceUpdate.id
-  const nouser = Object.keys(presenceUpdate.presences)
-  const status = presenceUpdate.presences[nouser]?.lastKnownPresence
-  const user = global.db.data.users[nouser[0]]
+  try {
+    const id = presenceUpdate.id
+    if (!presenceUpdate.presences) return
+    const nouser = Object.keys(presenceUpdate.presences)
+    if (!nouser.length) return
+    const status = presenceUpdate.presences[nouser[0]]?.lastKnownPresence
+    const user = global.db.data?.users?.[nouser[0]]
 
-  if (user?.afk && status === 'composing' && user.afk > -1) {
+    if (user?.afk && status === 'composing' && user.afk > -1) {
     const username = nouser[0].split('@')[0]
     const timeAfk = new Date() - user.afk
     const caption = `@${username} stopped being AFK.\n\nReason: ${user.afkReason || 'No reason'}\nDuration: ${formatDuration(timeAfk)}`
 
     this.reply(id, caption, null, { mentions: [nouser[0]] })
     user.afk = -1
-    user.afkReason = ''
+      user.afkReason = ''
+    }
+  } catch (e) {
+    console.error('Error in presenceUpdate:', e)
   }
 }
 
