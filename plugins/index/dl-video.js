@@ -16,33 +16,70 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     // Check if it's a URL or search query
     const isUrl = /^https?:\/\//.test(text)
     
-    if (isUrl) {
-      // Handle URL (YouTube, TikTok, etc.)
-      if (text.includes('tiktok.com')) {
-        m.reply('🎬 *TikTok Video Detected*\n\n_TikTok download requires external API setup._\n\nURL: ' + text)
-      } else if (text.includes('youtube.com') || text.includes('youtu.be')) {
-        m.reply('🎬 *YouTube Video Detected*\n\n_YouTube download requires external API setup._\n\nURL: ' + text)
-      } else {
-        m.reply('🎬 *Video URL Detected*\n\n_Video download requires external API setup._\n\nURL: ' + text)
-      }
-    } else {
+    let videoUrl = text
+    let videoInfo = null
+
+    if (!isUrl) {
       // Search YouTube
+      await pb.update(20, 'Searching for video...')
       const { videos } = await yts(text)
       if (!videos || !videos.length) {
         await pb.finish(false, 'No videos found!')
         return
       }
-      
-      const video = videos[0]
-      await pb.update(50, `Found: ${video.title}`)
+      videoInfo = videos[0]
+      videoUrl = videoInfo.url
+    } else if (text.includes('youtube.com') || text.includes('youtu.be')) {
+      await pb.update(20, 'Fetching video info...')
+      const { videos } = await yts(text)
+      if (videos && videos.length) videoInfo = videos[0]
+    }
 
-      const caption = `🎬 *${video.title}*\n\n⏱️ Duration: ${video.timestamp}\n👁️ Views: ${formatNumber(video.views)}\n📺 Channel: ${video.author.name}\n🔗 URL: ${video.url}\n\n_Video download requires external API setup._`
+    if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
+      await pb.update(40, 'Fetching metadata from API...')
+      const apiUrl = `https://apis.davidcyriltech.my.id/download/ytmp4?url=${encodeURIComponent(videoUrl)}`
+
+      const response = await fetch(apiUrl)
+      const data = await response.json()
       
-      await pb.update(80, 'Preparing response...')
+      if (data.status !== 200 || !data.success || !data.result.download_url) {
+        throw new Error('Failed to fetch the video. Please try again later.')
+      }
+
+      const downloadUrl = data.result.download_url
+      const title = data.result.title || videoInfo?.title || 'YouTube Video'
+
+      await pb.update(60, 'Sending video info...')
+      const caption = `🎬 *NEXUS-MD VIDEO* 🎬\n\n` +
+                      `📝 *Title:* ${title}\n` +
+                      (videoInfo ? `⏱️ *Duration:* ${videoInfo.timestamp}\n👁️ *Views:* ${formatNumber(videoInfo.views)}\n📺 *Channel:* ${videoInfo.author.name}\n` : '') +
+                      `🔗 *URL:* ${videoUrl}`
+      
       await conn.sendMessage(m.chat, {
-        text: caption
+        image: { url: data.result.thumbnail || videoInfo?.thumbnail || '' },
+        caption
       }, { quoted: m })
+
+      await pb.update(80, 'Sending video file...')
+      await conn.sendMessage(m.chat, {
+        video: { url: downloadUrl },
+        mimetype: 'video/mp4',
+        fileName: `${title}.mp4`
+      }, { quoted: m })
+
+      await pb.update(95, 'Sending document...')
+      await conn.sendMessage(m.chat, {
+          document: { url: downloadUrl },
+          mimetype: 'video/mp4',
+          fileName: `${title}.mp4`,
+          caption: `*${title}*\n> *©️ NEXUS-MD DOWNLOADER*`
+      }, { quoted: m })
+
       await pb.finish(true)
+    } else if (isUrl && text.includes('tiktok.com')) {
+      await pb.finish(false, 'TikTok download requires specific API.')
+    } else if (isUrl) {
+      await pb.finish(false, 'Unsupported video URL.')
     }
   } catch (e) {
     console.error(e)

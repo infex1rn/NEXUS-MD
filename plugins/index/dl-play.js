@@ -58,21 +58,46 @@ handler.before = async (m, { conn }) => {
     try {
       await pb.update(10, 'Initializing download...')
       
-      const apiUrl = `https://ironman.koyeb.app/ironman/dl/yta?url=${encodeURIComponent(selected.url)}`
+      const apiUrl = `https://apis.davidcyriltech.my.id/youtube/mp3?url=${encodeURIComponent(selected.url)}`
       
-      await pb.update(30, 'Fetching data from API...')
+      await pb.update(30, 'Fetching metadata from API...')
       const response = await fetch(apiUrl)
-      if (!response.ok) throw new Error(`API responded with status: ${response.status}`)
+      const data = await response.json()
 
-      await pb.update(60, 'Processing audio buffer...')
-      const buffer = await response.buffer()
+      if (data.status !== 200 || !data.success || !data.result.downloadUrl) {
+        throw new Error('Failed to fetch the audio. Please try again later.')
+      }
+
+      const downloadUrl = data.result.downloadUrl
+      const title = data.result.title || selected.title
       
-      await pb.update(90, 'Sending audio file...')
+      await pb.update(60, 'Sending audio info...')
+      const ytmsg = `🎵 *NEXUS-MD MUSIC* 🎵\n\n` +
+                    `📝 *Title:* ${title}\n` +
+                    `⏳ *Duration:* ${selected.timestamp}\n` +
+                    `🌍 *Views:* ${formatNumber(selected.views)}\n` +
+                    `📂 *Author:* ${selected.author.name}\n` +
+                    `🖇️ *Link:* ${selected.url}`
+
       await conn.sendMessage(m.chat, {
-        audio: buffer,
+        image: { url: data.result.image || selected.thumbnail || '' },
+        caption: ytmsg
+      }, { quoted: m })
+
+      await pb.update(80, 'Sending audio file...')
+      await conn.sendMessage(m.chat, {
+        audio: { url: downloadUrl },
         mimetype: 'audio/mpeg',
         ptt: false,
-        fileName: `${selected.title}.mp3`
+        fileName: `${title}.mp3`
+      }, { quoted: m })
+
+      await pb.update(95, 'Sending document...')
+      await conn.sendMessage(m.chat, {
+          document: { url: downloadUrl },
+          mimetype: 'audio/mpeg',
+          fileName: `${title}.mp3`,
+          caption: `*${title}*\n> *©️ NEXUS-MD DOWNLOADER*`
       }, { quoted: m })
       
       await pb.finish(true)
