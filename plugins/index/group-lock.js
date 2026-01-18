@@ -2,12 +2,12 @@
  * Group Lock Plugin - Toggle bot activation in groups
  */
 let handler = async (m, { conn, text, args, usedPrefix, command }) => {
-    if (args.length < 2) throw `*Format:* ${usedPrefix + command} group <on/off> <password>\n*Example:* ${usedPrefix + command} group on 1234`
+    if (args.length < 2) throw new Error(`*Format:* ${usedPrefix + command} group <on/off> <password>\n*Example:* ${usedPrefix + command} group on 1234`)
 
     let action = args[1].toLowerCase()
     let password = args[2]
 
-    if (password !== '1234') throw `❌ *Access Denied:* Incorrect password!`
+    if (password !== '1234') throw new Error(`❌ *Access Denied:* Incorrect password!`)
 
     if (action === 'on') {
         global.db.data.chats[m.chat].active = true
@@ -16,7 +16,7 @@ let handler = async (m, { conn, text, args, usedPrefix, command }) => {
         global.db.data.chats[m.chat].active = false
         m.reply(`🔒 *Bot Deactivated:* NEXUS-MD will now ignore commands in this group.`)
     } else {
-        throw `*Format:* ${usedPrefix + command} group <on/off> <password>`
+        throw new Error(`*Format:* ${usedPrefix + command} group <on/off> <password>`)
     }
 }
 

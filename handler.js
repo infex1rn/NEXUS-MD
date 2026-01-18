@@ -100,11 +100,12 @@ export async function handler(chatUpdate) {
     if (typeof m.text !== 'string') m.text = ''
 
     // Owner/mod checks
+    const botId = this.decodeJid(this.user?.id) || ''
     const isROwner = [
-      conn.decodeJid(global.conn.user.id),
-      ...global.owner.map(([number]) => number),
+      botId,
+      ...global.owner.map(([number]) => number)
     ]
-      .map(v => v.replace(/[^0-9]/g, '') + '@s.whatsapp.net')
+      .map(v => (v || '').replace(/[^0-9]/g, '') + '@s.whatsapp.net')
       .includes(m.sender)
     const isOwner = isROwner || m.fromMe
     const isMods = isOwner || global.mods.map(v => v.replace(/[^0-9]/g, '') + '@s.whatsapp.net').includes(m.sender)
@@ -292,10 +293,20 @@ export async function handler(chatUpdate) {
         
         try {
           await plugin.call(this, m, extra)
+          // Log command execution
+          console.log(
+            chalk.black(chalk.bgWhite('[ COMMAND ]')),
+            chalk.cyan(new Date().toLocaleString()),
+            chalk.green(command),
+            'from',
+            chalk.yellow(m.name || m.sender),
+            'in',
+            chalk.blue(m.isGroup ? 'Group' : 'Private')
+          )
         } catch (e) {
           m.error = e
           console.error(e)
-          m.reply(`❌ Error: ${e.message}`)
+          m.reply(`❌ Error: ${e.message || e}`)
         } finally {
           if (typeof plugin.after === 'function') {
             try {

@@ -13,6 +13,8 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     let q = m.quoted ? m.quoted : m
     let mime = (q.msg || q).mimetype || q.mediaType || ''
     
+    if (!mime && q.msg && q.msg.mimetype) mime = q.msg.mimetype
+
     let buffer = /image|video|webp/.test(mime) ? await q.download() : null
     let url = !buffer && args[0] && isUrl(args[0]) ? args[0] : null
     

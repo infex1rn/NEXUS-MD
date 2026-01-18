@@ -6,10 +6,12 @@ import {
   formatMoney,
   removeMoney,
   addMoney,
+  addExp,
   CURRENCY
 } from '../../lib/economy.js'
 
 let handler = async (m, { conn, args, usedPrefix, command, isOwner }) => {
+    const isGivingExp = command.includes('exp')
     const mentioned = m.mentionedJid?.[0] || (m.quoted ? m.quoted.sender : null)
 
     if (!mentioned) {
@@ -17,7 +19,7 @@ let handler = async (m, { conn, args, usedPrefix, command, isOwner }) => {
     }
 
     if (mentioned === m.sender && !isOwner) {
-        return m.reply(`❌ You can't transfer money to yourself!`)
+        return m.reply(`❌ You can't transfer to yourself!`)
     }
 
     // Parse amount from args
@@ -25,7 +27,7 @@ let handler = async (m, { conn, args, usedPrefix, command, isOwner }) => {
     let amount = parseInt(amountArg?.replace(/[^0-9]/g, ''))
 
     if (!amount || amount <= 0) {
-        return m.reply(`❌ Please specify a valid amount of coins to give.`)
+        return m.reply(`❌ Please specify a valid amount to give.`)
     }
 
     // Check if target exists in database
@@ -49,13 +51,19 @@ let handler = async (m, { conn, args, usedPrefix, command, isOwner }) => {
 
     if (isOwner) {
         // Minting Mode
-        addMoney(receiver, amount)
-        // Sync balance if it exists (no double adding)
-        if (receiver && typeof receiver.balance === 'number') receiver.balance = receiver.economy.wallet
-
-        m.reply(`✅ *MINT SUCCESS*\n\nSuccessfully minted *${formatMoney(amount)}* for *@${mentioned.split('@')[0]}*`, null, { mentions: [mentioned] })
+        if (isGivingExp) {
+            addExp(receiver, amount)
+            if (receiver && typeof receiver.exp === 'number') receiver.exp = receiver.economy.exp
+            m.reply(`✅ *EXP MINT SUCCESS*\n\nSuccessfully gave *${amount} EXP* to *@${mentioned.split('@')[0]}*`, null, { mentions: [mentioned] })
+        } else {
+            addMoney(receiver, amount)
+            // Sync balance if it exists (no double adding)
+            if (receiver && typeof receiver.balance === 'number') receiver.balance = receiver.economy.wallet
+            m.reply(`✅ *MINT SUCCESS*\n\nSuccessfully minted *${formatMoney(amount)}* for *@${mentioned.split('@')[0]}*`, null, { mentions: [mentioned] })
+        }
     } else {
         // Transfer Mode
+        if (isGivingExp) return m.reply(`❌ Only owners can give EXP!`)
         const sender = global.db.data.users[m.sender]
         const senderEconomy = initUserEconomy(sender)
 
@@ -78,8 +86,8 @@ let handler = async (m, { conn, args, usedPrefix, command, isOwner }) => {
     }
 }
 
-handler.help = ['give @user <amount>']
+handler.help = ['give @user <amount>', 'giveexp @user <amount>']
 handler.tags = ['economy']
-handler.command = ['give', 'addmoney']
+handler.command = ['give', 'addmoney', 'giveexp', 'addexp']
 
 export default handler
