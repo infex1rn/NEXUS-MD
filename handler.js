@@ -101,12 +101,7 @@ export async function handler(chatUpdate) {
 
     // Owner/mod checks
     const botId = this.decodeJid(this.user?.id) || ''
-    const isROwner = [
-      botId,
-      ...global.owner.map(([number]) => number)
-    ]
-      .map(v => this.decodeJid((v || '').replace(/[^0-9]/g, '') + '@s.whatsapp.net'))
-      .includes(m.sender)
+    const isROwner = [botId, ...global.owner].some(user => user.replace(/[^0-9]/g, '') === m.sender.replace(/[^0-9]/g, ''))
     const isOwner = isROwner || m.fromMe
     const isMods = isOwner || global.mods.map(v => v.replace(/[^0-9]/g, '') + '@s.whatsapp.net').includes(m.sender)
 
@@ -115,9 +110,9 @@ export async function handler(chatUpdate) {
       let chat = global.db.data.chats[m.chat]
       // Silent Mode: Ignore all commands except activation if group is not active
       if (chat && !chat.active && !isOwner) {
-        // Safety check for m.text and ensure it starts with the activation command
+        // Safety check for m.text and ensure it matches the activation command
         const activationCmd = '.bot group on 1234'
-        if (!m.text || !m.text.toLowerCase().startsWith(activationCmd)) return
+        if (!m.text || m.text.toLowerCase().trim() !== activationCmd) return
       }
     }
 
@@ -127,15 +122,13 @@ export async function handler(chatUpdate) {
 
     // Group/participant context
     let usedPrefix
-    let groupMetadata = (m.isGroup
-      ? (this.chats[m.chat] || {}).metadata || (await this.groupMetadata(m.chat).catch(_ => null))
-      : {}) || {}
-    let participants = (m.isGroup ? groupMetadata.participants : []) || []
-    let user = (m.isGroup ? participants.find(u => this.decodeJid(u.id) === m.sender) : {}) || {}
-    let bot = (m.isGroup ? participants.find(u => this.decodeJid(u.id) == this.decodeJid(this.user?.id)) : {}) || {}
-    let isRAdmin = user?.admin == 'superadmin' || false
-    let isAdmin = isRAdmin || user?.admin == 'admin' || false
-    let isBotAdmin = bot?.admin || false
+    const groupMetadata = m.isGroup ? await this.groupMetadata(m.chat).catch(_ => ({})) : {}
+    const participants = m.isGroup ? (groupMetadata.participants || []) : []
+    const user = m.isGroup ? participants.find(u => this.decodeJid(u.id) === m.sender) : {}
+    const bot = m.isGroup ? participants.find(u => this.decodeJid(u.id) === this.decodeJid(this.user?.id)) : {}
+    const isRAdmin = user?.admin === 'superadmin' || false
+    const isAdmin = isRAdmin || user?.admin === 'admin' || false
+    const isBotAdmin = m.isGroup ? (participants.find(u => this.decodeJid(u.id) === this.decodeJid(this.user?.id))?.admin ?? null) !== null : false
 
     // Plugin execution
     const ___dirname = path.join(path.dirname(fileURLToPath(import.meta.url)), './plugins/index')
@@ -255,29 +248,11 @@ export async function handler(chatUpdate) {
           fail('group', m, this)
           continue
         } else if (plugin.botAdmin && !isBotAdmin) {
-          // Force refresh metadata to be sure
-          groupMetadata = await this.groupMetadata(m.chat).catch(_ => ({}))
-          participants = groupMetadata.participants || []
-          bot = participants.find(u => this.decodeJid(u.id) == this.decodeJid(this.user?.id)) || {}
-          isBotAdmin = (bot?.admin === 'admin' || bot?.admin === 'superadmin')
-          if (this.chats[m.chat]) this.chats[m.chat].metadata = groupMetadata
-
-          if (!isBotAdmin) {
-            fail('botAdmin', m, this)
-            continue
-          }
+          fail('botAdmin', m, this)
+          continue
         } else if (plugin.admin && !isAdmin) {
-          // Force refresh metadata to be sure
-          groupMetadata = await this.groupMetadata(m.chat).catch(_ => ({}))
-          participants = groupMetadata.participants || []
-          user = participants.find(u => this.decodeJid(u.id) === m.sender) || {}
-          isAdmin = (user?.admin === 'admin' || user?.admin === 'superadmin')
-          if (this.chats[m.chat]) this.chats[m.chat].metadata = groupMetadata
-
-          if (!isAdmin) {
-            fail('admin', m, this)
-            continue
-          }
+          fail('admin', m, this)
+          continue
         }
         if (plugin.private && m.isGroup) {
           fail('private', m, this)

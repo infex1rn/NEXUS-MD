@@ -10,8 +10,7 @@ let handler = async (m, { conn, text, participants }) => {
   // Check if user is trying to kick bot or owner
   if (who === conn.user.jid) return m.reply("*I can't kick myself!*")
   
-  const ownerNumbers = global.owner.map(([num]) => num.replace(/[^0-9]/g, '') + '@s.whatsapp.net')
-  if (ownerNumbers.includes(who)) return m.reply("*I can't kick the bot owner!*")
+  if (global.owner.some(user => user.replace(/[^0-9]/g, '') === who.replace(/[^0-9]/g, ''))) return m.reply("*I can't kick the bot owner!*")
   
   try {
     await conn.groupParticipantsUpdate(m.chat, [who], 'remove')
