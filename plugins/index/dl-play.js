@@ -55,14 +55,18 @@ handler.before = async (m, { conn }) => {
     try {
       await m.reply(`⏳ *Downloading:* ${selected.title}\n\n_Please wait, this may take a moment..._`)
       
-      // Using a free API for YouTube download (placeholder - users should use their own API)
-      const apiUrl = `https://api.vevioz.com/api/button/mp3/${encodeURIComponent(selected.videoId)}`
+      const apiUrl = `https://ironman.koyeb.app/ironman/dl/yta?url=${encodeURIComponent(selected.url)}`
       
-      // For demo purposes, sending video info
-      const caption = `🎵 *${selected.title}*\n\n⏱️ Duration: ${selected.timestamp}\n👁️ Views: ${formatNumber(selected.views)}\n🔗 URL: ${selected.url}\n\n_Note: Audio download requires external API setup._`
+      const response = await fetch(apiUrl)
+      if (!response.ok) throw new Error(`API responded with status: ${response.status}`)
+
+      const buffer = await response.buffer()
       
       await conn.sendMessage(m.chat, {
-        text: caption
+        audio: buffer,
+        mimetype: 'audio/mpeg',
+        ptt: false,
+        fileName: `${selected.title}.mp3`
       }, { quoted: m })
       
     } catch (error) {

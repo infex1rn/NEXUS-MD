@@ -15,7 +15,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     
     if (!mime && q.msg && q.msg.mimetype) mime = q.msg.mimetype
 
-    let buffer = /image|video|webp/.test(mime) ? await q.download() : null
+    let buffer = /image|video|gif|webp/.test(mime) ? await q.download() : null
     let url = !buffer && args[0] && isUrl(args[0]) ? args[0] : null
     
     if (!buffer && !url) {
