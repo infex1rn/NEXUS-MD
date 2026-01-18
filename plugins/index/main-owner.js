@@ -12,14 +12,15 @@ let handler = async (m, { conn }) => {
   }
   
   let body = ''
-  for (const [number, name] of owners) {
-    body += `📱 *${name || 'Owner'}*\nwa.me/${number}\n\n`
+  for (const owner of owners) {
+    const number = owner.split('@')[0]
+    body += `📱 *Owner*\nwa.me/${number}\n\n`
   }
   
   let message = formatMessage('Bot Owners', body.trim(), 'Contact the owner for queries or support!')
   
   // Send owner contact(s)
-  const contacts = owners.map(([number, name]) => [number, name || 'Bot Owner'])
+  const contacts = owners.map(owner => [owner.split('@')[0], 'Bot Owner'])
   
   await conn.sendContact(m.chat, contacts, m)
   await m.reply(message)

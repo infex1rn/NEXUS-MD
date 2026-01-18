@@ -2,7 +2,8 @@
  * Group Lock Plugin - Toggle bot activation in groups
  */
 let handler = async (m, { conn, text, args, usedPrefix, command }) => {
-    if (args.length < 2) throw new Error(`*Format:* ${usedPrefix + command} group <on/off> <password>\n*Example:* ${usedPrefix + command} group on 1234`)
+    if (args[0] !== 'group') return
+    if (args.length < 3) throw new Error(`*Format:* ${usedPrefix + command} group <on/off> <password>\n*Example:* ${usedPrefix + command} group on 1234`)
 
     let action = args[1].toLowerCase()
     let password = args[2]

@@ -3,6 +3,7 @@
  * Provides web interface for pairing code generation and bot dashboard
  */
 
+import express from 'express'
 import http from 'http'
 import { readFileSync, existsSync } from 'fs'
 import { fileURLToPath } from 'url'
@@ -24,127 +25,49 @@ const pairingState = {
 export { pairingState }
 
 /**
- * Get MIME type for file extension
- */
-function getMimeType(ext) {
-  const mimeTypes = {
-    '.html': 'text/html',
-    '.css': 'text/css',
-    '.js': 'application/javascript',
-    '.json': 'application/json',
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.gif': 'image/gif',
-    '.svg': 'image/svg+xml',
-    '.ico': 'image/x-icon'
-  }
-  return mimeTypes[ext] || 'text/plain'
-}
-
-/**
- * CORS headers for API responses
- */
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type'
-}
-
-/**
- * Parse JSON body from request
- */
-async function parseBody(req) {
-  return new Promise((resolve, reject) => {
-    let body = ''
-    req.on('data', chunk => { body += chunk })
-    req.on('end', () => {
-      try {
-        resolve(body ? JSON.parse(body) : {})
-      } catch {
-        resolve({})
-      }
-    })
-    req.on('error', reject)
-  })
-}
-
-/**
- * Send JSON response
- */
-function sendJSON(res, data, status = 200) {
-  res.writeHead(status, { 'Content-Type': 'application/json', ...CORS_HEADERS })
-  res.end(JSON.stringify(data))
-}
-
-/**
  * Create and start the web server
  * Listens on 0.0.0.0 and process.env.PORT || 10000
  */
 export function createServer(conn, requestPairingCode) {
+  const app = express()
   const PORT = parseInt(process.env.PORT) || 10000
 
-  const server = http.createServer(async (req, res) => {
-    const url = new URL(req.url, `http://localhost:${PORT}`)
-    const pathname = url.pathname
-
-    // Handle CORS preflight
-    if (req.method === 'OPTIONS') {
-      res.writeHead(204, CORS_HEADERS)
-      res.end()
-      return
-    }
-
-    // Health check for Render - MUST respond 200 OK immediately
-    // Expanded to be more inclusive for various cloud platform pings
-    if (pathname === '/health' || pathname === '/') {
-      if (
-        pathname === '/health' ||
-        req.headers['user-agent']?.includes('Render') ||
-        req.headers['x-render-ping'] ||
-        url.searchParams.has('health')
-      ) {
-        res.writeHead(200, { 'Content-Type': 'text/plain', ...CORS_HEADERS })
-        res.end('OK')
-        return
-      }
-    }
-
-    // API Routes
-    if (pathname.startsWith('/api/')) {
-      return handleAPI(req, res, pathname, requestPairingCode)
-    }
-
-    // Serve static files
-    serveStatic(req, res, pathname)
+  // Middleware
+  app.use(express.json())
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*')
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    res.header('Access-Control-Allow-Headers', 'Content-Type')
+    if (req.method === 'OPTIONS') return res.sendStatus(204)
+    next()
   })
 
-  const HOST = '0.0.0.0'
-  server.listen(PORT, HOST, () => {
-    console.log(`\n🌐 Web Dashboard: http://${HOST}:${PORT}`)
-    console.log(`📱 Pairing Page: http://${HOST}:${PORT}/#pair\n`)
+  // Health check for Render - MUST respond 200 OK immediately
+  app.get(['/', '/health'], (req, res, next) => {
+    if (
+      req.path === '/health' ||
+      req.headers['user-agent']?.includes('Render') ||
+      req.headers['x-render-ping'] ||
+      req.query.health !== undefined
+    ) {
+      return res.status(200).send('OK')
+    }
+    next()
   })
 
-  return server
-}
-
-/**
- * Handle API requests
- */
-async function handleAPI(req, res, pathname, requestPairingCode) {
-  const conn = global.conn
-  // Health check
-  if (pathname === '/api/health') {
-    return sendJSON(res, { 
+  // API Routes
+  app.get('/api/health', (req, res) => {
+    res.json({
       status: 'ok', 
       bot: process.env.BOTNAME || 'NEXUS-MD',
       timestamp: new Date().toISOString()
     })
-  }
+  })
 
-  // Get bot status
-  if (pathname === '/api/status') {
+  app.get('/api/status', (req, res) => {
+    const conn = global.conn
     const isConnected = conn?.user?.jid ? true : false
-    return sendJSON(res, {
+    res.json({
       bot: process.env.BOTNAME || 'NEXUS-MD',
       version: '1.0.0',
       connected: isConnected,
@@ -166,30 +89,29 @@ async function handleAPI(req, res, pathname, requestPairingCode) {
         admin: true
       }
     })
-  }
+  })
 
-  // Request pairing code
-  if (pathname === '/api/pair' && req.method === 'POST') {
+  app.post('/api/pair', async (req, res) => {
+    const conn = global.conn
     try {
-      const body = await parseBody(req)
-      const { phoneNumber } = body
+      const { phoneNumber } = req.body
 
       // Validate phone number
       if (!phoneNumber) {
-        return sendJSON(res, { error: 'Phone number is required' }, 400)
+        return res.status(400).json({ error: 'Phone number is required' })
       }
 
       const cleanNumber = phoneNumber.replace(/[^0-9]/g, '')
       
       if (cleanNumber.length < 10 || cleanNumber.length > 15) {
-        return sendJSON(res, { 
+        return res.status(400).json({
           error: 'Invalid phone number. Use format: 1234567890 (10-15 digits with country code)' 
-        }, 400)
+        })
       }
 
       // Check if already connected
       if (conn?.user?.jid) {
-        return sendJSON(res, {
+        return res.json({
           success: true,
           alreadyConnected: true,
           message: 'Bot is already connected',
@@ -215,7 +137,7 @@ async function handleAPI(req, res, pathname, requestPairingCode) {
           pairingState.pairingCode = formattedCode
           pairingState.status = 'ready'
 
-          return sendJSON(res, {
+          res.json({
             success: true,
             pairingCode: formattedCode,
             phoneNumber: cleanNumber,
@@ -230,21 +152,20 @@ async function handleAPI(req, res, pathname, requestPairingCode) {
         } else {
           pairingState.status = 'error'
           pairingState.error = 'Failed to generate pairing code'
-          return sendJSON(res, { error: 'Failed to generate pairing code' }, 500)
+          res.status(500).json({ error: 'Failed to generate pairing code' })
         }
       } catch (error) {
         pairingState.status = 'error'
         pairingState.error = error.message
-        return sendJSON(res, { error: error.message }, 500)
+        res.status(500).json({ error: error.message })
       }
     } catch (error) {
-      return sendJSON(res, { error: 'Invalid request' }, 400)
+      res.status(400).json({ error: 'Invalid request' })
     }
-  }
+  })
 
-  // Get pairing status
-  if (pathname === '/api/pair/status') {
-    return sendJSON(res, {
+  app.get('/api/pair/status', (req, res) => {
+    res.json({
       status: pairingState.status,
       pairingCode: pairingState.pairingCode,
       phoneNumber: pairingState.phoneNumber,
@@ -255,60 +176,41 @@ async function handleAPI(req, res, pathname, requestPairingCode) {
         name: global.conn.user.name || 'Unknown'
       } : null
     })
-  }
+  })
 
-  // Commands list
-  if (pathname === '/api/commands') {
-    return sendJSON(res, getCommandsList())
-  }
+  app.get('/api/commands', (req, res) => {
+    res.json(getCommandsList())
+  })
 
-  // Bot configuration
-  if (pathname === '/api/config') {
-    return sendJSON(res, {
+  app.get('/api/config', (req, res) => {
+    res.json({
       prefix: process.env.PREFIX || '.',
       botName: process.env.BOTNAME || 'NEXUS-MD',
       firebase: process.env.FIREBASE_PROJECT_ID ? 'Connected' : 'Not configured'
     })
-  }
+  })
 
-  // 404 for unknown API routes
-  return sendJSON(res, { error: 'Not found' }, 404)
-}
+  // Static files and dashboard
+  const publicDir = path.join(__dirname, 'web', 'public')
+  app.use(express.static(publicDir))
 
-/**
- * Serve static files
- */
-function serveStatic(req, res, pathname) {
-  // Default to index.html
-  if (pathname === '/' || pathname === '') {
-    pathname = '/index.html'
-  }
-
-  // Try to serve from web/public directory
-  const filePath = path.join(__dirname, 'web', 'public', pathname)
-  
-  if (existsSync(filePath)) {
-    try {
-      const content = readFileSync(filePath)
-      const ext = path.extname(filePath)
-      res.writeHead(200, { 'Content-Type': getMimeType(ext), ...CORS_HEADERS })
-      res.end(content)
-      return
-    } catch {
-      // Fall through to serve inline HTML
+  // Catch-all route for SPA or fallback to dashboard
+  app.use((req, res) => {
+    const indexPath = path.join(publicDir, 'index.html')
+    if (existsSync(indexPath)) {
+      res.sendFile(indexPath)
+    } else {
+      res.send(getDashboardHTML())
     }
-  }
+  })
 
-  // Serve the dashboard HTML inline if file not found
-  if (pathname === '/index.html' || pathname === '/') {
-    res.writeHead(200, { 'Content-Type': 'text/html', ...CORS_HEADERS })
-    res.end(getDashboardHTML())
-    return
-  }
+  const HOST = '0.0.0.0'
+  const server = app.listen(PORT, HOST, () => {
+    console.log(`\n🌐 Web Dashboard: http://${HOST}:${PORT}`)
+    console.log(`📱 Pairing Page: http://${HOST}:${PORT}/#pair\n`)
+  })
 
-  // 404 for other files
-  res.writeHead(404, { 'Content-Type': 'text/plain', ...CORS_HEADERS })
-  res.end('Not Found')
+  return server
 }
 
 /**

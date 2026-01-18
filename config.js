@@ -11,12 +11,10 @@ const ownerList = ownerEnv.split(';')
 
 global.owner = []
 for (let i = 0; i < ownerList.length; i += 2) {
-    const owner = [
-        ownerList[i],            
-        ownerList[i + 1] || 'Owner',         
-        true                        
-    ]
-    global.owner.push(owner)
+    const number = ownerList[i].replace(/[^0-9]/g, '')
+    if (number) {
+        global.owner.push(`${number}@s.whatsapp.net`)
+    }
 }
 
 global.mods = process.env.MODS ? process.env.MODS.split(',') : []

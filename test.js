@@ -240,11 +240,11 @@ test('Owner check works correctly', () => {
   assert(Array.isArray(owners), 'Owners should be an array')
   
   const checkOwner = (sender, ownerList) => {
-    return ownerList.map(([num]) => num.replace(/[^0-9]/g, '') + '@s.whatsapp.net').includes(sender)
+    return ownerList.some(user => user.replace(/[^0-9]/g, '') === sender.replace(/[^0-9]/g, ''))
   }
   
   // Mock test
-  const mockOwners = [['1234567890', 'Owner']]
+  const mockOwners = ['1234567890@s.whatsapp.net']
   assert(
     checkOwner('1234567890@s.whatsapp.net', mockOwners) === true,
     'Should identify owner'
