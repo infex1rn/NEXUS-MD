@@ -99,11 +99,15 @@ export async function handler(chatUpdate) {
     if (global.opts['nyimak']) return
     if (typeof m.text !== 'string') m.text = ''
 
-    // Owner/mod checks
-    const botId = this.decodeJid(this.user?.id) || ''
-    const isROwner = [botId, ...global.owner].some(user => user.replace(/[^0-9]/g, '') === m.sender.replace(/[^0-9]/g, ''))
-    const isOwner = isROwner || m.fromMe
-    const isMods = isOwner || global.mods.map(v => v.replace(/[^0-9]/g, '') + '@s.whatsapp.net').includes(m.sender)
+    // Permission Detection
+    const botJid = this.decodeJid(this.user?.id) || ''
+    const senderNumber = m.sender.split('@')[0]
+    const ownerNumbers = (global.owner || []).map(v => v.replace(/[^0-9]/g, ''))
+    const modNumbers = (global.mods || []).map(v => v.replace(/[^0-9]/g, ''))
+
+    const isROwner = [botJid.split('@')[0], ...ownerNumbers].includes(senderNumber) || m.fromMe
+    const isOwner = isROwner || modNumbers.includes(senderNumber)
+    const isMods = isOwner
 
     // Group Activation System (Middleware)
     if (m.isGroup) {
@@ -124,11 +128,8 @@ export async function handler(chatUpdate) {
     let usedPrefix
     const groupMetadata = m.isGroup ? await this.groupMetadata(m.chat).catch(_ => ({})) : {}
     const participants = m.isGroup ? (groupMetadata.participants || []) : []
-    const user = m.isGroup ? participants.find(u => this.decodeJid(u.id) === m.sender) : {}
-    const bot = m.isGroup ? participants.find(u => this.decodeJid(u.id) === this.decodeJid(this.user?.id)) : {}
-    const isRAdmin = user?.admin === 'superadmin' || false
-    const isAdmin = isRAdmin || user?.admin === 'admin' || false
-    const isBotAdmin = m.isGroup ? (participants.find(u => this.decodeJid(u.id) === this.decodeJid(this.user?.id))?.admin ?? null) !== null : false
+    const isBotAdmin = m.isGroup ? !!(participants.find(p => p.id === botJid)?.admin) : false
+    const isAdmin = m.isGroup ? !!(participants.find(p => p.id === m.sender)?.admin) : false
 
     // Plugin execution
     const ___dirname = path.join(path.dirname(fileURLToPath(import.meta.url)), './plugins/index')
@@ -227,11 +228,7 @@ export async function handler(chatUpdate) {
           if (name != 'owner-unbanuser.js' && user?.banned) return
         }
         
-        // Permission checks
-        if (plugin.rowner && plugin.owner && !(isROwner || isOwner)) {
-          fail('owner', m, this)
-          continue
-        }
+        // Permission checks (Order: Owner, Group, BotAdmin, Admin)
         if (plugin.rowner && !isROwner) {
           fail('rowner', m, this)
           continue
@@ -247,10 +244,12 @@ export async function handler(chatUpdate) {
         if (plugin.group && !m.isGroup) {
           fail('group', m, this)
           continue
-        } else if (plugin.botAdmin && !isBotAdmin) {
+        }
+        if (plugin.botAdmin && !isBotAdmin) {
           fail('botAdmin', m, this)
           continue
-        } else if (plugin.admin && !isAdmin) {
+        }
+        if (plugin.admin && !isAdmin) {
           fail('admin', m, this)
           continue
         }
