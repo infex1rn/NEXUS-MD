@@ -1,4 +1,5 @@
 import { smsg, formatMessage } from './lib/simple.js'
+import { sticker } from './lib/sticker.js'
 import { areJidsSameUser } from '@whiskeysockets/baileys'
 import { fileURLToPath } from 'url'
 import path, { join } from 'path'
@@ -66,6 +67,16 @@ export async function handler(chatUpdate) {
         if (!isNumber(dbUser.exp)) dbUser.exp = 0
         if (!isNumber(dbUser.lastClaim)) dbUser.lastClaim = 0
         if (!('role' in dbUser)) dbUser.role = 'Novice'
+
+        // XP tracking
+        if (!m.isBaileys && m.text) {
+          dbUser.exp += 5
+          const level = Math.floor(0.1 * Math.sqrt(dbUser.exp)) + 1
+          if (level > (dbUser.level || 1)) {
+            dbUser.level = level
+            m.reply(`🎊 *LEVEL UP!* 🎊\n\nCongratulations @${m.sender.split('@')[0]}! You reached *Level ${level}*!`, null, { mentions: [m.sender] })
+          }
+        }
       }
       
       // Initialize chat in database
@@ -103,6 +114,60 @@ export async function handler(chatUpdate) {
       console.error(e)
     }
     
+    // Anti-Spam
+    if (m.isGroup && !m.fromMe && !m.isBaileys) {
+      let dbChat = global.db.data.chats[m.chat]
+      if (dbChat?.antiSpam) {
+        this.spam = this.spam || {}
+        const userId = m.sender
+        const now = Date.now()
+        this.spam[userId] = this.spam[userId] || []
+        this.spam[userId].push(now)
+        this.spam[userId] = this.spam[userId].filter(t => now - t < 5000)
+
+        if (this.spam[userId].length > 5) {
+          let dbUser = global.db.data.users[m.sender]
+          dbUser.warn = (dbUser.warn || 0) + 1
+          if (dbUser.warn >= 5) {
+            await this.groupParticipantsUpdate(m.chat, [m.sender], 'remove')
+            m.reply(`❌ @${m.sender.split('@')[0]} has been kicked for spamming!`, null, { mentions: [m.sender] })
+            dbUser.warn = 0
+          } else {
+            m.reply(`⚠️ @${m.sender.split('@')[0]}, do not spam! Warning ${dbUser.warn}/5`, null, { mentions: [m.sender] })
+          }
+          this.spam[userId] = []
+        }
+      }
+    }
+
+    // Auto-Sticker
+    if (m.isGroup && !m.fromMe && !m.isBaileys) {
+      let dbChat = global.db.data.chats[m.chat]
+      if (dbChat?.autoSticker && /image/.test(m.mtype)) {
+        try {
+          let buffer = await m.download()
+          let stickerBuffer = await sticker(buffer, false, global.packname, global.author)
+          if (stickerBuffer) await this.sendMessage(m.chat, { sticker: stickerBuffer }, { quoted: m })
+        } catch (e) {
+          console.error('Error in Auto-Sticker:', e)
+        }
+      }
+    }
+
+    // Anti-ViewOnce
+    if (m.msg && m.msg.viewOnce && !m.fromMe) {
+      let dbChat = global.db.data.chats[m.chat]
+      if (dbChat?.antiViewOnce) {
+        try {
+          let buffer = await m.download()
+          let caption = `💠 *Anti-ViewOnce Detected!*\n\n👤 *Sender:* @${m.sender.split('@')[0]}\n📝 *Caption:* ${m.text || 'No caption'}`
+          await this.sendFile(m.chat, buffer, '', caption, m, false, { mentions: [m.sender] })
+        } catch (e) {
+          console.error('Error in Anti-ViewOnce:', e)
+        }
+      }
+    }
+
     // Mode checks
     if (settings?.self && m.chat.endsWith('g.us')) return
     if (global.opts['nyimak']) return
