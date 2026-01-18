@@ -1,4 +1,5 @@
 import { smsg, formatMessage } from './lib/simple.js'
+import { areJidsSameUser } from '@whiskeysockets/baileys'
 import { fileURLToPath } from 'url'
 import path, { join } from 'path'
 import { unwatchFile, watchFile } from 'fs'
@@ -135,9 +136,9 @@ export async function handler(chatUpdate) {
     let usedPrefix
     const groupMetadata = m.isGroup ? await this.groupMetadata(m.chat).catch(_ => ({})) : {}
     const participants = m.isGroup ? (groupMetadata.participants || []) : []
-    const isBotAdmin = m.isGroup ? !!(participants.find(p => p.id === botJid)?.admin) : false
-    const isAdmin = m.isGroup ? !!(participants.find(p => p.id === (m.key.participant ?? m.sender))?.admin) : false
-    const isRAdmin = m.isGroup ? !!(participants.find(p => p.id === (m.key.participant ?? m.sender))?.admin === 'superadmin') : false
+    const isBotAdmin = m.isGroup ? !!(participants.find(p => areJidsSameUser(p.id, botJid))?.admin) : false
+    const isAdmin = m.isGroup ? !!(participants.find(p => areJidsSameUser(p.id, m.key.participant ?? m.sender))?.admin) : false
+    const isRAdmin = m.isGroup ? !!(participants.find(p => areJidsSameUser(p.id, m.key.participant ?? m.sender))?.admin === 'superadmin') : false
 
     // Plugin execution
     const ___dirname = path.join(path.dirname(fileURLToPath(import.meta.url)), './plugins/index')
