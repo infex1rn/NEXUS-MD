@@ -48,7 +48,7 @@ global.__require = function require(dir = import.meta.url) {
 
 const MAIN_LOGGER = pino({ level: 'fatal' })
 const msgRetryCounterCache = new NodeCache()
-const groupMetadataCache = new NodeCache({ stdTTL: 5 * 60, useClones: false })
+const messageCache = new NodeCache({ stdTTL: 5 * 60, useClones: false })
 
 const __dirname_current = global.__dirname(import.meta.url)
 global.opts = new Object(yargs(process.argv.slice(2)).exitProcess(false).parse())
@@ -114,15 +114,14 @@ function getConnectionOptions() {
     shouldSyncHistoryMessage: () => false,
     connectTimeoutMs: 60000,
     msgRetryCounterCache,
-    version: version || [2, 3100, 1015901307],
+    version: version || [2, 3000, 1015901307],
     getMessage: async (key) => {
-      if (groupMetadataCache) {
-        const jid = key.remoteJid
-        const msg = await groupMetadataCache.get(key.id)
+      if (messageCache) {
+        const msg = await messageCache.get(key.id)
         if (msg) return msg.message
       }
       return {
-        conversation: 'Hello'
+        conversation: 'NEXUS-MD Decryption Placeholder'
       }
     }
   }
@@ -148,14 +147,20 @@ async function connectionUpdate(update) {
   const code = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.output?.payload?.statusCode
 
   if (connection === 'close') {
-    console.log(chalk.red(`Connection closed. Reason: ${code}`))
+    const reason = code || 'Unknown'
+    const error = lastDisconnect?.error
+    console.log(chalk.red(`[ CONNECTION CLOSED ] Reason: ${reason}`))
+    if (error) console.error(chalk.red(`[ CONNECTION ERROR ]`), error)
+
     if (code === DisconnectReason.loggedOut || code === 405) {
+      console.log(chalk.yellow(`[ SESSION TERMINATED ] Logged out or session expired. Clearing data...`))
       if (code === DisconnectReason.loggedOut) {
         if (useFirebase) await clearFirebaseAuthState()
         else try { rmSync('./auth_info', { recursive: true, force: true }) } catch {}
       }
       process.exit(0)
     } else {
+      console.log(chalk.blue(`[ RECONNECTING ] Attempting to restart handler...`))
       await global.reloadHandler(true)
     }
   } else if (connection === 'open') {
@@ -205,6 +210,12 @@ global.reloadHandler = async function(restartConn) {
     conn.connectionUpdate = connectionUpdate.bind(conn)
     conn.credsUpdate = saveCreds.bind(conn)
 
+    conn.ev.on('messages.upsert', async ({ messages }) => {
+      for (const msg of messages) {
+        if (!msg.message) continue
+        messageCache.set(msg.key.id, msg)
+      }
+    })
     conn.ev.on('messages.upsert', conn.handler)
     conn.ev.on('group-participants.update', conn.participantsUpdate)
     conn.ev.on('groups.update', conn.groupsUpdate)
@@ -255,14 +266,28 @@ global.reload = async (_ev, filename) => {
 }
 watch(pluginFolder, global.reload)
 
-process.on('uncaughtException', console.error)
-process.on('unhandledRejection', console.error)
+process.on('uncaughtException', (err) => {
+  console.error(chalk.red('[ UNCAUGHT EXCEPTION ]'), err)
+})
+process.on('unhandledRejection', (reason, promise) => {
+  console.error(chalk.red('[ UNHANDLED REJECTION ]'), 'at:', promise, 'reason:', reason)
+})
 
-const shutdown = async () => {
-  console.log(chalk.yellow('Shutting down...'))
-  if (global.db.data) await global.db.write()
-  if (global.conn?.ws) global.conn.ws.close()
+const shutdown = async (signal) => {
+  console.log(chalk.yellow(`[ SHUTDOWN ] Received ${signal}. Saving database and closing connection...`))
+  try {
+    if (global.db.data) {
+      await global.db.write()
+      console.log(chalk.green('[ SHUTDOWN ] Database saved successfully.'))
+    }
+    if (global.conn?.ws) {
+      global.conn.ws.close()
+      console.log(chalk.green('[ SHUTDOWN ] Connection closed.'))
+    }
+  } catch (e) {
+    console.error(chalk.red('[ SHUTDOWN ERROR ]'), e)
+  }
   process.exit(0)
 }
-process.on('SIGTERM', shutdown)
-process.on('SIGINT', shutdown)
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
