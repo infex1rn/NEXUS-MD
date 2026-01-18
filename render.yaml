@@ -2,14 +2,13 @@
 # https://render.com/docs/blueprint-spec
 
 services:
-  - type: web
+  - type: worker
     name: nexus-md-bot
     runtime: node
     region: oregon
     plan: free
     buildCommand: npm install
     startCommand: npm start
-    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production

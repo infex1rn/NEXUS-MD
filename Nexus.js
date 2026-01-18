@@ -15,7 +15,6 @@ import syntaxerror from 'syntax-error'
 import { format } from 'util'
 
 import {
-  useMultiFileAuthState,
   DisconnectReason,
   makeCacheableSignalKeyStore,
   delay,
@@ -25,16 +24,22 @@ import {
 
 import { makeWASocketExtended, protoType, serialize } from './lib/simple.js'
 import FirebaseDB from './lib/firebase.js'
-import { useFirebaseAuthState, clearFirebaseAuthState } from './lib/auth/firebase-auth.js'
+import { useFirebaseAuthState, clearFirebaseAuthState, flushAuthQueue } from './lib/auth/firebase-auth.js'
 import { createServer, pairingState } from './server.js'
 
 dotenv.config()
 
-const requestPairingCodeWrapper = async (num) => {
-  if (global.requestPairingCode) return await global.requestPairingCode(num)
-  throw new Error('Bot not initialized')
+if (process.env.PORT) {
+  const requestPairingCodeWrapper = async (num) => {
+    if (global.requestPairingCode) return await global.requestPairingCode(num)
+    throw new Error('Bot not initialized')
+  }
+  try {
+    createServer(null, requestPairingCodeWrapper)
+  } catch (e) {
+    console.error('Failed to start web server:', e)
+  }
 }
-createServer(null, requestPairingCodeWrapper)
 
 global.__filename = function filename(pathURL = import.meta.url, rmPrefix = platform !== 'win32') {
   return rmPrefix ? (/file:\/\/\//.test(pathURL) ? fileURLToPath(pathURL) : pathURL) : pathToFileURL(pathURL).toString()
@@ -76,18 +81,7 @@ setInterval(async () => {
   if (global.db.data) await global.db.write()
 }, 60 * 1000)
 
-let state, saveCreds
-const useFirebase = process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY
-
-if (useFirebase) {
-  const firebaseAuth = await useFirebaseAuthState()
-  state = firebaseAuth.state
-  saveCreds = firebaseAuth.saveCreds
-} else {
-  const fileAuth = await useMultiFileAuthState('./auth_info')
-  state = fileAuth.state
-  saveCreds = fileAuth.saveCreds
-}
+const { state, saveCreds } = await useFirebaseAuthState()
 
 let version
 async function getLatestVersion() {
@@ -155,12 +149,16 @@ async function connectionUpdate(update) {
     if (code === DisconnectReason.loggedOut || code === 405) {
       console.log(chalk.yellow(`[ SESSION TERMINATED ] Logged out or session expired. Clearing data...`))
       if (code === DisconnectReason.loggedOut) {
-        if (useFirebase) await clearFirebaseAuthState()
-        else try { rmSync('./auth_info', { recursive: true, force: true }) } catch {}
+        await clearFirebaseAuthState()
       }
       process.exit(0)
+    } else if (code === 515) {
+      console.log(chalk.blue(`[ STREAM ERROR 515 ] Reconnecting after delay...`))
+      await delay(5000)
+      await global.reloadHandler(true)
     } else {
-      console.log(chalk.blue(`[ RECONNECTING ] Attempting to restart handler...`))
+      console.log(chalk.blue(`[ RECONNECTING ] Attempting to restart after delay...`))
+      await delay(5000)
       await global.reloadHandler(true)
     }
   } else if (connection === 'open') {
@@ -186,8 +184,9 @@ global.reloadHandler = async function(restartConn) {
         oldConn.ev.removeAllListeners()
         if (oldConn.ws) {
           oldConn.ws.terminate()
-          await delay(2000)
         }
+        global.conn = null
+        await delay(3000)
       } catch (e) {}
       global.conn = makeWASocketExtended(getConnectionOptions())
     }
@@ -274,15 +273,20 @@ process.on('unhandledRejection', (reason, promise) => {
 })
 
 const shutdown = async (signal) => {
-  console.log(chalk.yellow(`[ SHUTDOWN ] Received ${signal}. Saving database and closing connection...`))
+  console.log(chalk.yellow(`[ SHUTDOWN ] Received ${signal}. Saving data and closing connection...`))
   try {
     if (global.db.data) {
       await global.db.write()
       console.log(chalk.green('[ SHUTDOWN ] Database saved successfully.'))
     }
+
+    // Ensure all auth writes are flushed to Firebase
+    await flushAuthQueue()
+    console.log(chalk.green('[ SHUTDOWN ] Auth state flushed.'))
+
     if (global.conn?.ws) {
-      global.conn.ws.close()
-      console.log(chalk.green('[ SHUTDOWN ] Connection closed.'))
+      global.conn.ws.terminate()
+      console.log(chalk.green('[ SHUTDOWN ] Connection terminated.'))
     }
   } catch (e) {
     console.error(chalk.red('[ SHUTDOWN ERROR ]'), e)
