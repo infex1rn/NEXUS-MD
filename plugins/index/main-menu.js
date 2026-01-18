@@ -3,6 +3,13 @@
  * Display all available commands
  */
 import { formatMessage } from '../../lib/simple.js'
+import { toMono, toSmallCaps } from '../../lib/font.js'
+import os from 'os'
+import moment from 'moment-timezone'
+import fs from 'fs'
+import { join } from 'path'
+
+const { version } = JSON.parse(fs.readFileSync(join(process.cwd(), 'package.json')))
 
 let handler = async (m, { conn, usedPrefix }) => {
   const plugins = global.plugins || {}
@@ -59,17 +66,36 @@ let handler = async (m, { conn, usedPrefix }) => {
   }
   
   const uptime = process.uptime()
-  const hours = Math.floor(uptime / 3600)
-  const minutes = Math.floor((uptime % 3600) / 60)
-  const runtime = `${hours}h ${minutes}m`
+  const d = Math.floor(uptime / 86400)
+  const h = Math.floor((uptime % 86400) / 3600)
+  const min = Math.floor((uptime % 3600) / 60)
+  const s = Math.floor(uptime % 60)
+  const runtime = `${d > 0 ? d + 'd ' : ''}${h}h ${min}m ${s}s`
 
-  let menuHeader = `🤖 *BOT:* Nexus-MD Premium
-👤 *USER:* @${m.sender.split('@')[0]}
-🚀 *RUNTIME:* ${runtime}
-📊 *COMMANDS:* ${Object.values(commands).flat().length}
-📍 *PREFIX:* [ ${usedPrefix} ]`
+  const totalMem = Math.round(os.totalmem() / 1024 / 1024)
+  const freeMem = Math.round(os.freemem() / 1024 / 1024)
+  const usedMem = totalMem - freeMem
 
-  let menuText = formatMessage('Nexus-MD', menuHeader) + '\n\n'
+  const time = moment().tz('Asia/Colombo').format('HH:mm:ss') // Defaulting to a common TZ or we could use user's if known
+  const date = moment().tz('Asia/Colombo').format('DD/MM/YYYY')
+  const day = moment().tz('Asia/Colombo').format('dddd')
+
+  let headerText = `╭═══ ${global.botname} ═══⊷
+┃❃╭──────────────
+┃❃│ Prefix : ${usedPrefix}
+┃❃│ User : ${m.name || m.sender.split('@')[0]}
+┃❃│ Time : ${time}
+┃❃│ Day : ${day}
+┃❃│ Date : ${date}
+┃❃│ Version : ${version}
+┃❃│ Plugins : ${Object.keys(plugins).length}
+┃❃│ Ram : ${usedMem}/${totalMem}MB
+┃❃│ Uptime : ${runtime}
+┃❃│ Platform : ${os.platform()} (${os.type()})
+┃❃╰───────────────
+╰═════════════════⊷`
+
+  let menuText = headerText + '\n\n'
 
   // Sort categories
   const sortOrder = ['main', 'economy', 'casino', 'cards', 'group', 'downloader', 'sticker', 'tools', 'fun', 'utility', 'owner', 'other']
@@ -83,15 +109,14 @@ let handler = async (m, { conn, usedPrefix }) => {
     const cmds = commands[category]
     if (!cmds || cmds.length === 0) continue
     
-    const emoji = categoryEmoji[category] || '📦'
-    const name = categoryNames[category] || category.toUpperCase()
+    const name = categoryNames[category] || category
     
     let categoryBody = ''
     for (const { cmd, help } of cmds) {
-      categoryBody += `◦ ${usedPrefix}${help}\n`
+      categoryBody += `${toMono(help.toUpperCase())}\n`
     }
     
-    menuText += formatMessage(`${emoji} ${name}`, categoryBody.trim()) + '\n\n'
+    menuText += formatMessage(toSmallCaps(name), categoryBody.trim()) + '\n\n'
   }
   
   menuText += formatMessage('Info', `💡 *Tips:*

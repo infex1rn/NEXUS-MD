@@ -45,11 +45,11 @@ global.xmoji = '🔥'
 
 // Decoration
 global.decor = {
-  header: '╭━━━〔 %title 〕━━━┈',
-  body: '┃',
-  footer: '╰━━━━━━━━━━━━━━┈',
-  line: '┃',
-  separator: '┃━━━━━━━━━━━━━━━━━━━━━'
+  header: '╭─❏ %title ❏',
+  body: '│',
+  footer: '╰─────────────────',
+  line: '│',
+  separator: '╰─────────────────'
 }
 
 // Limits

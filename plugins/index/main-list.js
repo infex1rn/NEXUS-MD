@@ -5,20 +5,22 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { formatMessage } from '../../lib/simple.js'
+import { toMono, toSmallCaps } from '../../lib/font.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const tags = {
-  'main': '🏠 Main',
-  'group': '👥 Group',
-  'downloader': '📥 Downloader',
-  'sticker': '🎨 Sticker',
-  'tools': '🔧 Tools',
-  'fun': '🎮 Fun',
-  'utility': '⚙️ Utility',
-  'owner': '👑 Owner',
-  'config': '⚙️ Config',
-  'other': '📦 Other'
+  'main': 'Main',
+  'group': 'Group',
+  'downloader': 'Downloader',
+  'sticker': 'Sticker',
+  'tools': 'Tools',
+  'fun': 'Fun',
+  'utility': 'Utility',
+  'owner': 'Owner',
+  'config': 'Config',
+  'other': 'Other'
 }
 
 let handler = async (m, { conn, usedPrefix, args }) => {
@@ -54,15 +56,10 @@ let handler = async (m, { conn, usedPrefix, args }) => {
     // Filter by category if specified
     const filterTag = args[0]?.toLowerCase()
     
-    let text = `
-╭━━━⬣ *NEXUS-MD COMMANDS* ⬣━━━╮
-┃
-┃ 📋 *Total:* ${Object.values(commandsMap).flat().length} commands
-┃ ⌨️ *Prefix:* ${usedPrefix}
-┃
-╰━━━━━━━━━━━━━━━━━━━━━━━╯
-
-`
+    let text = `╭═══ ${global.botname} ═══⊷\n`
+    text += `┃❃ 📋 Total: ${Object.values(commandsMap).flat().length} commands\n`
+    text += `┃❃ ⌨️ Prefix: ${usedPrefix}\n`
+    text += `╰═════════════════⊷\n\n`
     
     const sortOrder = ['main', 'group', 'downloader', 'sticker', 'tools', 'fun', 'utility', 'config', 'owner', 'other']
     
@@ -72,21 +69,19 @@ let handler = async (m, { conn, usedPrefix, args }) => {
       const cmds = commandsMap[tag]
       if (!cmds || cmds.length === 0) continue
       
-      const emoji = tags[tag]?.split(' ')[0] || '📦'
-      const name = tags[tag] || tag.toUpperCase()
+      const name = tags[tag] || tag
       
-      text += `┌──⬣ ${name} ⬣──\n`
-      
+      let categoryBody = ''
       for (const { cmd } of cmds) {
-        text += `│ ◦ ${usedPrefix}${cmd}\n`
+        categoryBody += `${toMono(cmd.toUpperCase())}\n`
       }
       
-      text += `└───────────────\n\n`
+      text += formatMessage(toSmallCaps(name), categoryBody.trim()) + '\n\n'
     }
     
-    text += `\n💡 *Tip:* ${usedPrefix}list <category> for specific category\n`
-    text += `📖 *Example:* ${usedPrefix}list group\n\n`
-    text += `_Powered by NEXUS-MD_`
+    text += `\n💡 Tip: ${usedPrefix}list <category> for specific category\n`
+    text += `📖 Example: ${usedPrefix}list group\n\n`
+    text += `_Powered by ${global.botname}_`
     
     await m.reply(text)
     
