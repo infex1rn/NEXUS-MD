@@ -4,7 +4,17 @@
  */
 import { formatMessage } from '../../lib/simple.js'
 
-let handler = async (m, { conn }) => {
+let handler = async (m, { conn, command }) => {
+  if (command === 'mods' || command === 'modlist') {
+    const mods = global.mods || []
+    if (mods.length === 0) return m.reply('*No moderators configured!*')
+    let body = '🛠️ *MODERATOR LIST*\n\n'
+    mods.forEach((mod, i) => {
+      body += `${i + 1}. wa.me/${mod.split('@')[0]}\n`
+    })
+    return m.reply(body, null, { mentions: mods })
+  }
+
   const owners = global.owner || []
   
   if (owners.length === 0) {
@@ -26,9 +36,9 @@ let handler = async (m, { conn }) => {
   await m.reply(message)
 }
 
-handler.help = ['owner']
+handler.help = ['owner', 'mods']
 handler.tags = ['main']
-handler.command = ['owner', 'creator', 'dev']
+handler.command = ['owner', 'creator', 'dev', 'mods', 'modlist']
 handler.desc = 'Display bot owner information'
 
 export default handler

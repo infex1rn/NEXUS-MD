@@ -1,5 +1,6 @@
 import { smsg, formatMessage } from './lib/simple.js'
 import { sticker } from './lib/sticker.js'
+import { characters } from './lib/characters.js'
 import { areJidsSameUser } from '@whiskeysockets/baileys'
 import { fileURLToPath } from 'url'
 import path, { join } from 'path'
@@ -103,13 +104,20 @@ export async function handler(chatUpdate) {
         if (!('self' in settings)) settings.self = false
         if (!('autoread' in settings)) settings.autoread = false
         if (!('restrict' in settings)) settings.restrict = false
+        if (!('character' in settings)) settings.character = '0'
       } else {
         global.db.data.settings[botJid] = {
           self: false,
           autoread: false,
           restrict: false,
+          character: '0'
         }
       }
+
+      // Apply character configuration
+      const currentChar = characters.find(c => c.id === settings.character) || characters[0]
+      global.botname = currentChar.name
+      global.author = currentChar.name
     } catch (e) {
       console.error(e)
     }
@@ -174,12 +182,8 @@ export async function handler(chatUpdate) {
     if (typeof m.text !== 'string') m.text = ''
 
     // Permission Detection
-    const senderNumber = m.sender.split('@')[0]
-    const ownerNumbers = (global.owner || []).map(v => v.replace(/[^0-9]/g, ''))
-    const modNumbers = (global.mods || []).map(v => v.replace(/[^0-9]/g, ''))
-
-    const isROwner = [botJid.split('@')[0], ...ownerNumbers].includes(senderNumber) || m.fromMe
-    const isOwner = isROwner || modNumbers.includes(senderNumber)
+    const isROwner = [botJid, ...global.owner].some(jid => areJidsSameUser(m.sender, jid)) || m.fromMe
+    const isOwner = isROwner || (global.mods || []).some(jid => areJidsSameUser(m.sender, jid))
     const isMods = isOwner
 
     // Group Activation System (Middleware)
@@ -199,7 +203,7 @@ export async function handler(chatUpdate) {
 
     // Group/participant context
     let usedPrefix
-    const groupMetadata = m.isGroup ? await this.groupMetadata(m.chat).catch(_ => ({})) : {}
+    const groupMetadata = m.isGroup ? (this.chats[m.chat]?.metadata || await this.groupMetadata(m.chat).catch(_ => ({}))) : {}
     const participants = m.isGroup ? (groupMetadata.participants || []) : []
     const isBotAdmin = m.isGroup ? !!(participants.find(p => areJidsSameUser(p.id, botJid))?.admin) : false
     const isAdmin = m.isGroup ? !!(participants.find(p => areJidsSameUser(p.id, m.key.participant ?? m.sender))?.admin) : false
