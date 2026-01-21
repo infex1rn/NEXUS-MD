@@ -17,8 +17,8 @@ for (let i = 0; i < ownerList.length; i += 2) {
     }
 }
 
-global.mods = process.env.MODS ? process.env.MODS.split(',') : []
-global.allowed = process.env.ALLOWED ? process.env.ALLOWED.split(',') : []
+global.mods = (process.env.MODS ? process.env.MODS.split(',') : []).map(v => v.replace(/[^0-9]/g, '') + '@s.whatsapp.net')
+global.allowed = (process.env.ALLOWED ? process.env.ALLOWED.split(',') : []).map(v => v.replace(/[^0-9]/g, '') + '@s.whatsapp.net')
 
 // Bot configuration
 global.botname = process.env.BOTNAME || 'NEXUS-MD'

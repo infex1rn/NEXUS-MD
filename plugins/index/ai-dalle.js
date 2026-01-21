@@ -16,14 +16,19 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     await pb.update(10, 'Analyzing prompt...')
     await m.react('🎨')
     
-    // Note: In production, integrate with DALL-E, Midjourney, or Stable Diffusion API
-    const message = `🎨 *AI Image Generation*\n\n📝 Prompt: *${text}*\n\n_To enable image generation, configure:_\n1. Get OpenAI API key (for DALL-E)\n2. Add OPENAI_API_KEY to .env\n3. Restart the bot\n\n*Supported APIs:*\n- OpenAI DALL-E 3\n- Stable Diffusion\n- Midjourney (via proxy)\n- Leonardo AI`
+    await pb.update(40, 'Generating image with Nano Banana...')
+    // Integration with Nano Banana API (assuming flux model as default)
+    const apiUrl = `https://api.nanobana.pro/api/ai/flux?prompt=${encodeURIComponent(text)}`
     
-    await pb.update(40, 'Generating image base...')
-    await pb.update(70, 'Applying artistic style...')
+    const response = await fetch(apiUrl)
+    if (!response.ok) throw new Error(`API error: ${response.statusText}`)
+
+    const buffer = await response.buffer()
+    if (buffer.length < 1000) throw new Error('Invalid image received from API')
+
     await pb.update(90, 'Finalizing render...')
 
-    await m.reply(message)
+    await conn.sendFile(m.chat, buffer, 'ai-image.jpg', `🎨 *Generated Image*\n\n📝 Prompt: *${text}*\n🤖 Model: *Nano Banana (Flux)*`, m)
     await m.react('✅')
     await pb.finish(true)
   } catch (e) {
