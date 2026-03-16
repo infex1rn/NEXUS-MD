@@ -182,12 +182,17 @@ global.reloadHandler = async function(restartConn) {
       try {
         const oldConn = global.conn
         oldConn.ev.removeAllListeners()
-        if (oldConn.ws) {
-          oldConn.ws.terminate()
+        if (oldConn.ws && typeof oldConn.ws.close === 'function') {
+          oldConn.ws.close()
+        }
+        if (typeof oldConn.end === 'function') {
+          oldConn.end(new Error('Reloading connection'))
         }
         global.conn = null
         await delay(3000)
-      } catch (e) {}
+      } catch (e) {
+        console.error('Error closing connection:', e)
+      }
       global.conn = makeWASocketExtended(getConnectionOptions())
     }
 
@@ -284,8 +289,13 @@ const shutdown = async (signal) => {
     await flushAuthQueue()
     console.log(chalk.green('[ SHUTDOWN ] Auth state flushed.'))
 
-    if (global.conn?.ws) {
-      global.conn.ws.terminate()
+    if (global.conn) {
+      if (global.conn.ws && typeof global.conn.ws.close === 'function') {
+        global.conn.ws.close()
+      }
+      if (typeof global.conn.end === 'function') {
+        global.conn.end(new Error('Bot shutdown'))
+      }
       console.log(chalk.green('[ SHUTDOWN ] Connection terminated.'))
     }
   } catch (e) {
