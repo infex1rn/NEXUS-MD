@@ -180,8 +180,8 @@ export async function handler(chatUpdate) {
     // Permission Detection
     let isROwner = [botJid, ...global.owner].some(jid => areJidsSameUser(m.sender, jid)) || m.fromMe
     if (process.env.OWNER_NUMBER) {
-      const overrideOwner = process.env.OWNER_NUMBER.replace(/[^0-9]/g, '') + '@s.whatsapp.net'
-      if (areJidsSameUser(m.sender, overrideOwner)) {
+      const overrideOwners = process.env.OWNER_NUMBER.split(',').map(num => num.replace(/[^0-9]/g, '') + '@s.whatsapp.net')
+      if (overrideOwners.some(owner => areJidsSameUser(m.sender, owner))) {
         isROwner = true
       }
     }
