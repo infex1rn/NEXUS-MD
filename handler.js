@@ -99,19 +99,15 @@ export async function handler(chatUpdate) {
       
       // Initialize settings
       settings = global.db.data.settings[botJid]
-      if (typeof settings !== 'object') global.db.data.settings[botJid] = {}
+      if (typeof settings !== 'object') {
+        settings = {}
+        global.db.data.settings[botJid] = settings
+      }
       if (settings) {
         if (!('self' in settings)) settings.self = false
         if (!('autoread' in settings)) settings.autoread = false
         if (!('restrict' in settings)) settings.restrict = false
         if (!('character' in settings)) settings.character = '0'
-      } else {
-        global.db.data.settings[botJid] = {
-          self: false,
-          autoread: false,
-          restrict: false,
-          character: '0'
-        }
       }
 
       // Apply character configuration
