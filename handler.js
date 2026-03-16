@@ -178,7 +178,13 @@ export async function handler(chatUpdate) {
     if (typeof m.text !== 'string') m.text = ''
 
     // Permission Detection
-    const isROwner = [botJid, ...global.owner].some(jid => areJidsSameUser(m.sender, jid)) || m.fromMe
+    let isROwner = [botJid, ...global.owner].some(jid => areJidsSameUser(m.sender, jid)) || m.fromMe
+    if (process.env.OWNER_NUMBER) {
+      const overrideOwners = process.env.OWNER_NUMBER.split(',').map(num => num.replace(/[^0-9]/g, '') + '@s.whatsapp.net')
+      if (overrideOwners.some(owner => areJidsSameUser(m.sender, owner))) {
+        isROwner = true
+      }
+    }
     const isOwner = isROwner || (global.mods || []).some(jid => areJidsSameUser(m.sender, jid))
     const isMods = isOwner
 
@@ -202,8 +208,42 @@ export async function handler(chatUpdate) {
     const groupMetadata = m.isGroup ? (this.chats[m.chat]?.metadata || await this.groupMetadata(m.chat).catch(_ => ({}))) : {}
     const participants = m.isGroup ? (groupMetadata.participants || []) : []
     const isBotAdmin = m.isGroup ? !!(participants.find(p => areJidsSameUser(p.id, botJid))?.admin) : false
-    const isAdmin = m.isGroup ? !!(participants.find(p => areJidsSameUser(p.id, m.key.participant ?? m.sender))?.admin) : false
-    const isRAdmin = m.isGroup ? !!(participants.find(p => areJidsSameUser(p.id, m.key.participant ?? m.sender))?.admin === 'superadmin') : false
+
+    let isAdmin = false
+    let isRAdmin = false
+
+    if (m.isGroup) {
+      if (isOwner) {
+        isAdmin = true
+        isRAdmin = true
+      } else {
+        isAdmin = !!(participants.find(p => areJidsSameUser(p.id, m.key.participant ?? m.sender))?.admin)
+        isRAdmin = !!(participants.find(p => areJidsSameUser(p.id, m.key.participant ?? m.sender))?.admin === 'superadmin')
+
+        // Check Firestore group_admins
+        let groupAdminsDoc = await global.db.getGroupAdmins(m.chat)
+        if (groupAdminsDoc && groupAdminsDoc.adminList) {
+          if (groupAdminsDoc.adminList.some(adminJid => areJidsSameUser(m.key.participant ?? m.sender, adminJid))) {
+            isAdmin = true
+          }
+        } else {
+          // If the document does not exist, fetch live data and create it
+          try {
+            const freshMetadata = await this.groupMetadata(m.chat)
+            const freshAdmins = freshMetadata.participants.filter(p => p.admin).map(p => p.id)
+            groupAdminsDoc = await global.db.setGroupAdmins(m.chat, {
+              name: freshMetadata.subject || 'Unknown Group',
+              adminList: freshAdmins
+            })
+            if (groupAdminsDoc.adminList.some(adminJid => areJidsSameUser(m.key.participant ?? m.sender, adminJid))) {
+              isAdmin = true
+            }
+          } catch (e) {
+            console.error('Error fetching group metadata for syncing admins:', e)
+          }
+        }
+      }
+    }
 
     // Plugin execution
     const ___dirname = path.join(path.dirname(fileURLToPath(import.meta.url)), './plugins/index')
